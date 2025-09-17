@@ -1,1 +1,398 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agenda do Motorista — Sync automático (HTML estático)</title>
+  <meta name="description" content="Carrega e salva corridas. Sincroniza automaticamente com um JSON hospedado no repositório (GitHub Pages/raw). Fallback para localStorage." />
+  <style>
+    :root{
+      --bg:#0f172a;--panel:#111827;--muted:#334155;--text:#e5e7eb;--accent:#22c55e;--accent2:#60a5fa;--warn:#f59e0b;--danger:#ef4444;--border:#1f2937
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(15,23,42,.92));backdrop-filter:saturate(140%) blur(6px);z-index:10}
+    header .left{display:flex;align-items:center;gap:12px}
+    header h1{font-size:16px;margin:0;font-weight:700}
+    .logo{height:28px;width:auto;display:block;filter:brightness(1.05) contrast(1.1)}
+    .wrap{max-width:1200px;margin:0 auto;padding:18px}
+    .grid{display:grid;gap:14px}
+    @media(min-width:900px){.grid.cols-3{grid-template-columns:2fr 1.5fr 1.5fr}}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
+    .panel h2{margin:0 0 10px;font-size:15px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row > *{flex:1 1 160px}
+    input, select, textarea{width:100%;background:#0b1224;border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:10px;outline:none}
+    textarea{min-height:70px;resize:vertical}
+    .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:#0b1224;color:var(--text);padding:10px 12px;border-radius:10px;cursor:pointer}
+    .btn:hover{border-color:#2b3a55}
+    .btn.primary{background:linear-gradient(180deg,#0ea5e9,#0284c7);border-color:#0ea5e9}
+    .btn.success{background:linear-gradient(180deg,#22c55e,#16a34a);border-color:#16a34a}
+    .btn.warn{background:linear-gradient(180deg,#f59e0b,#d97706);border-color:#d97706}
+    .btn.ghost{background:transparent}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}
+    .b-ok{background:#052e1b;color:#bbf7d0}
+    .b-warn{background:#3a3000;color:#fde68a}
+    .b-err{background:#3a0000;color:#fecaca}
+    .muted{color:#94a3b8}
+    .table-wrap{max-height:400px;overflow:auto;border:1px solid var(--border);border-radius:10px}
+    table{width:100%;border-collapse:collapse}
+    th, td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+    th{font-weight:600;color:#cbd5e1;background:#0b1224;position:sticky;top:0;z-index:1}
+    .u-baixa{background:#0b3b1f;color:#c7f9cc}
+    .u-media{background:#3a3000;color:#fde68a}
+    .u-alta{background:#3a1400;color:#fdba74}
+    .u-critical{background:#3a0000;color:#fecaca}
+    .status[data-s="pendente"]{color:#93c5fd}
+    .status[data-s="agendado"]{color:#a7f3d0}
+    .status[data-s="em_rota"]{color:#fde68a}
+    .status[data-s="concluido"]{color:#86efac;text-decoration:line-through;text-decoration-thickness:1.5px}
+    .status[data-s="cancelado"]{color:#fca5a5;text-decoration:line-through;text-decoration-thickness:1.5px}
+    .hide{display:none}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="left">
+      <img src="assets/system-logo.png" alt="System Engenharia" class="logo"/>
+      <h1>Agenda do Motorista — Sync</h1>
+      <span id="sync-badge" class="badge b-warn">Fonte: carregando…</span>
+    </div>
+    <div class="right">
+      <button class="btn ghost" id="btn-sync" title="Recarregar do repositório">🔄 Sincronizar</button>
+      <button class="btn ghost" id="btn-export" title="Exportar JSON">⬇️ Exportar</button>
+      <label class="btn ghost" title="Importar JSON">
+        ⬆️ Importar <input type="file" id="file-import" accept="application/json" hidden />
+      </label>
+      <button class="btn" id="btn-reset" title="Limpar tudo">🗑️ Limpar</button>
+    </div>
+  </header>
+
+  <div class="wrap grid cols-3">
+    <section class="panel" id="form-panel">
+      <h2>Novo pedido / corrida</h2>
+      <div class="row">
+        <div>
+          <label>Data/Hora Solicitação</label>
+          <input type="datetime-local" id="f_created_at" />
+        </div>
+        <div>
+          <label>Solicitante</label>
+          <select id="f_requester">
+            <option value="Marcelo Gosling">Marcelo Gosling</option>
+            <option value="Sigrid">Sigrid</option>
+            <option value="Maria">Maria</option>
+            <option value="Daniele Abreu">Daniele Abreu</option>
+            <option value="Cristiane">Cristiane</option>
+            <option value="Suprimentos">Suprimentos</option>
+            <option value="Administrativo">Administrativo</option>
+            <option value="Gestão Atlântico">Gestão Atlântico</option>
+            <option value="Gestão Orygem">Gestão Orygem</option>
+            <option value="Gestão Iconyc">Gestão Iconyc</option>
+            <option value="__outro__">Outros (por observação)</option>
+          </select>
+          <input id="f_requester_other" class="hide" placeholder="Informe o solicitante" />
+        </div>
+        <div>
+          <label>Urgência</label>
+          <select id="f_urgency">
+            <option value="baixa">Baixa</option>
+            <option value="media">Média</option>
+            <option value="alta">Alta</option>
+            <option value="critical">CRITICAL</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Local</label>
+          <select id="f_location">
+            <option value="Obra Orygem">Obra Orygem</option>
+            <option value="Obra Atlântico">Obra Atlântico</option>
+            <option value="Obra Iconyc">Obra Iconyc</option>
+            <option value="Obra Safra">Obra Safra</option>
+            <option value="Banco">Banco</option>
+            <option value="Escritório System">Escritório System</option>
+            <option value="Galpão System">Galpão System</option>
+            <option value="__outro__">Outros (especificar)</option>
+          </select>
+          <input id="f_location_other" class="hide" placeholder="Descreva o local" />
+        </div>
+        <div>
+          <label>Janela/Limite</label>
+          <input type="datetime-local" id="f_deadline" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Observações</label>
+          <textarea id="f_notes" placeholder="Materiais especiais, horário estrito, acesso…"></textarea>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Status</label>
+          <select id="f_status">
+            <option value="pendente">Pendente</option>
+            <option value="agendado">Agendado</option>
+            <option value="em_rota">Em rota</option>
+            <option value="concluido">Concluído</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+        <div class="right">
+          <button class="btn primary" id="btn-add">➕ Adicionar</button>
+        </div>
+      </div>
+      <p class="muted">Fonte atual: <span id="source-label">—</span></p>
+    </section>
+
+    <section class="panel" id="summary-panel">
+      <h2>Resumo</h2>
+      <div id="kpis" class="row"></div>
+    </section>
+
+    <section class="panel" style="grid-column:1 / -1">
+      <h2>Solicitações / Corridas</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="min-width:160px">Data/Hora</th>
+              <th style="min-width:160px">Solicitante</th>
+              <th style="min-width:240px">Local</th>
+              <th>Urgência</th>
+              <th>Janela/Limite</th>
+              <th style="min-width:220px">Observações</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbl"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+<script>
+/*****************************
+ * CONFIGURAÇÃO DE SINCRONIA *
+ *****************************
+ - REMOTE_JSON_URL: defina o caminho do JSON no repositório.
+   Exemplos:
+   1) GitHub Pages:   https://SEU-USUARIO.github.io/SEU-REPO/agenda-motorista.json
+   2) Raw GitHub:     https://raw.githubusercontent.com/SEU-USUARIO/SEU-REPO/main/agenda-motorista.json
+ - Você também pode passar ?data=URL no link para usar outro JSON.
+*/
+const REMOTE_JSON_URL = (new URLSearchParams(location.search).get('data'))
+  || 'agenda-motorista.json'; // tenta carregar do mesmo diretório por padrão
+
+const LS_KEY = 'agendaMotorista_v2';
+const $ = (q, el=document) => el.querySelector(q);
+const $$ = (q, el=document) => Array.from(el.querySelectorAll(q));
+const fmtDateTime = (v) => v ? new Date(v).toLocaleString('pt-BR') : '';
+const todayStr = () => new Date().toISOString().slice(0,10);
+
+let data = null;
+let source = 'local'; // 'remoto' | 'local'
+
+init();
+
+async function init(){
+  attachEvents();
+  await syncFromRemote(); // tenta remoto ao carregar
+  if(!data){
+    // fallback localStorage
+    data = load() || seed();
+    setBadge('Fonte: localStorage', 'b-warn');
+    source = 'local';
+  }
+  renderAll();
+}
+
+function attachEvents(){
+  $('#btn-add').addEventListener('click', onAdd);
+  $('#btn-reset').addEventListener('click', onReset);
+  $('#btn-export').addEventListener('click', onExport);
+  $('#file-import').addEventListener('change', onImport);
+  $('#btn-sync').addEventListener('click', async ()=>{ await syncFromRemote(true); renderAll(); });
+  $('#f_requester').addEventListener('change', () => toggleOther('f_requester','f_requester_other'));
+  $('#f_location').addEventListener('change', () => toggleOther('f_location','f_location_other'));
+}
+
+function toggleOther(selId, otherId){
+  const isOther = $('#'+selId).value === '__outro__';
+  $('#'+otherId).classList.toggle('hide', !isOther);
+  if(isOther) $('#'+otherId).focus(); else $('#'+otherId).value='';
+}
+
+async function syncFromRemote(force=false){
+  try{
+    const url = REMOTE_JSON_URL + (REMOTE_JSON_URL.includes('?')?'&':'?') + 't=' + Date.now();
+    const res = await fetch(url, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const parsed = await res.json();
+    if(!parsed || !Array.isArray(parsed.requests)) throw new Error('Estrutura inválida');
+    data = parsed;
+    save(); // mantém uma cópia local
+    source = 'remoto';
+    setBadge('Fonte: repositório', 'b-ok');
+    $('#source-label').textContent = REMOTE_JSON_URL;
+    return true;
+  }catch(err){
+    if(force) alert('Falha ao sincronizar do repositório: '+err.message);
+    setBadge('Fonte: sem conexão remota', 'b-err');
+    return false;
+  }
+}
+
+function setBadge(text, cls){
+  const el = $('#sync-badge');
+  el.textContent = text; el.className = 'badge '+cls;
+}
+
+function onAdd(){
+  const requesterSel = $('#f_requester').value;
+  const requester = requesterSel === '__outro__' ? ($('#f_requester_other').value||'').trim() : requesterSel;
+  const locationSel = $('#f_location').value;
+  const location = locationSel === '__outro__' ? ($('#f_location_other').value||'').trim() : locationSel;
+  const item = {
+    id: crypto.randomUUID(),
+    created_at: $('#f_created_at').value || new Date().toISOString(),
+    requester_name: requester,
+    urgency: $('#f_urgency').value,
+    location: location,
+    deadline_at: $('#f_deadline').value || null,
+    notes: ($('#f_notes').value||'').trim(),
+    status: $('#f_status').value
+  };
+  if(!item.requester_name || !item.location){
+    alert('Preencha ao menos Solicitante e Local.');
+    return;
+  }
+  data.requests.unshift(item);
+  save();
+  renderAll();
+}
+
+function onReset(){
+  if(confirm('Limpar tudo? Isto remove os dados locais (não apaga o JSON do repositório).')){
+    localStorage.removeItem(LS_KEY);
+    data = seed(true);
+    renderAll();
+  }
+}
+
+function onExport(){
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'agenda-motorista.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function onImport(e){
+  const file = e.target.files?.[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed || !Array.isArray(parsed.requests)) throw new Error('JSON inválido');
+      data = parsed; save(); renderAll();
+    }catch(err){ alert('Falha ao importar: '+err.message) }
+  };
+  reader.readAsText(file);
+}
+
+function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'') }catch{ return null } }
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(data)) }
+
+function renderAll(){
+  renderKPIs();
+  renderTable();
+}
+
+function renderKPIs(){
+  const rows = data.requests || [];
+  const today = todayStr();
+  const todayCount = rows.filter(r=> (r.status!=='cancelado') && (r.created_at?.slice(0,10)===today)).length;
+  const pending = rows.filter(r=> r.status==='pendente').length;
+  const hot = rows.filter(r=> ['alta','critical'].includes(r.urgency) && r.status!=='cancelado').length;
+  $('#kpis').innerHTML = `
+    <div class="btn">Corridas hoje: <strong style="margin-left:6px">${todayCount}</strong></div>
+    <div class="btn">Pendentes: <strong style="margin-left:6px">${pending}</strong></div>
+    <div class="btn">Urgentes: <strong style="margin-left:6px">${hot}</strong></div>
+    <div class="btn">Origem: <strong style="margin-left:6px">${source}</strong></div>`;
+}
+
+function renderTable(){
+  const tbody = $('#tbl');
+  tbody.innerHTML = '';
+  for(const r of (data.requests||[])){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtDateTime(r.created_at)}</td>
+      <td>${escapeHtml(r.requester_name)}</td>
+      <td>${escapeHtml(r.location)}</td>
+      <td>${badgeUrg(r.urgency)}</td>
+      <td>${r.deadline_at? fmtDateTime(r.deadline_at):'<span class="muted">—</span>'}</td>
+      <td>${escapeHtml(r.notes||'')}</td>
+      <td class="status" data-s="${r.status}">
+        <select data-id="${r.id}" class="status-select">
+          ${optStatus(r.status)}
+        </select>
+      </td>
+      <td>
+        <button class="btn" data-act="del" data-id="${r.id}">🗑️</button>
+      </td>`;
+    tbody.appendChild(tr);
+  }
+  tbody.addEventListener('change', (e)=>{
+    if(e.target.matches('.status-select')){
+      const id = e.target.getAttribute('data-id');
+      const it = data.requests.find(x=>x.id===id);
+      if(it){ it.status = e.target.value; save(); renderKPIs(); }
+    }
+  }, {once:true});
+  tbody.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button');
+    if(!btn) return;
+    const id = btn.getAttribute('data-id');
+    if(btn.dataset.act==='del'){
+      if(confirm('Excluir esta solicitação?')){
+        data.requests = data.requests.filter(x=>x.id!==id); save(); renderAll();
+      }
+    }
+  }, {once:true});
+}
+
+function badgeUrg(u){
+  const map = {baixa:'u-baixa', media:'u-media', alta:'u-alta', critical:'u-critical'};
+  return `<span class="badge ${map[u]||'u-baixa'}">${u}</span>`;
+}
+function optStatus(s){
+  const sts=['pendente','agendado','em_rota','concluido','cancelado'];
+  return sts.map(v=> `<option value="${v}" ${v===s?'selected':''}>${v}</option>`).join('');
+}
+function escapeHtml(str){
+  return (str||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
+}
+
+// Seed mínimo (usado apenas no primeiro uso/local)
+function seed(force=false){
+  const now = new Date();
+  const iso = (d)=>{ d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString() };
+  const s = {
+    version: 3,
+    requests: [
+      { id: crypto.randomUUID(), created_at: iso(new Date()), requester_name:'Marcelo Gosling', urgency:'alta', location:'Obra Atlântico', deadline_at:null, notes:'Levar chaves e etiquetas', status:'pendente' }
+    ]
+  };
+  if(!force) localStorage.setItem(LS_KEY, JSON.stringify(s));
+  return s;
+}
+</script>
+</body>
+</html>
 
