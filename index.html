@@ -3,45 +3,64 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agenda do Motorista — v4.1 (scroll + “Outros” obrigatório)</title>
+  <title>Agenda do Motorista — v5.1 (logo inline)</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <style>
-    :root{ --bg:#0f172a; --panel:#111827; --border:#1f2937; --text:#e5e7eb; --muted:#94a3b8; --accent:#22c55e; --warn:#f59e0b; --err:#ef4444; }
+    :root{ --bg:#0f172a; --panel:#111827; --border:#1f2937; --text:#e5e7eb; --muted:#94a3b8; --accent:#22c55e; --warn:#f59e0b; --err:#ef4444; --ink:#0b1224; }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,Segoe UI,Roboto,Inter,Arial}
-    header{padding:14px 18px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+    header{padding:14px 18px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:20}
     header h1{margin:0;font-size:18px}
-    .wrap{max-width:1200px;margin:0 auto;padding:18px}
+    .brand img{height:36px;width:auto;display:block;object-fit:contain}
+    .wrap{max-width:1300px;margin:0 auto;padding:18px}
     .grid{display:grid;gap:14px}
-    @media(min-width:1024px){.grid.cols-3{grid-template-columns:2fr 1.1fr 1.1fr}}
+    @media(min-width:1100px){.grid.cols-3{grid-template-columns:2fr 1.1fr 1.1fr}}
     .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
     .panel h2{margin:0 0 10px;font-size:15px}
     label{display:block;margin:8px 0 4px 0;font-weight:600}
-    input,select,textarea{width:100%;background:#0b1224;border:1px solid var(--border);border-radius:10px;color:var(--text);padding:9px}
+    input,select,textarea{width:100%;background:var(--ink);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:9px}
     textarea{min-height:70px;resize:vertical}
     .row{display:flex;gap:10px;flex-wrap:wrap}
     .row>*{flex:1 1 200px}
     .btn{background:var(--accent);border:none;color:#fff;padding:10px 14px;border-radius:10px;cursor:pointer}
-    .btn.secondary{background:#0b1224;border:1px solid var(--border)}
+    .btn.secondary{background:var(--ink);border:1px solid var(--border)}
     .muted{color:var(--muted)}
     .error{color:var(--err);font-size:12px;margin-top:6px}
     .table-wrap{max-height:440px;overflow:auto;border:1px solid var(--border);border-radius:10px;margin-top:10px}
     table{width:100%;border-collapse:collapse}
     th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
-    th{background:#0b1224;position:sticky;top:0}
-    /* Catálogos com rolagem */
-    .scrollbox{max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:8px;background:#0b1224}
+    th{background:var(--ink);position:sticky;top:0;z-index:5}
+    .scrollbox{max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--ink)}
     .pill{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#0e162c;border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin:6px 0;cursor:pointer}
     .pill small{opacity:.8}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+    .kpi{background:#0e162c;border:1px solid var(--border);border-radius:12px;padding:12px}
+    .kpi .v{font-size:22px;font-weight:700}
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:#12233f;color:#c7d2fe;border:1px solid #1f3b73}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+    .toolbar .spacer{flex:1}
+    .chip{display:inline-flex;align-items:center;gap:6px;background:#0e162c;border:1px solid var(--border);border-radius:999px;padding:6px 10px}
+    .actions button{margin-right:6px}
+    .icon-btn{background:transparent;border:1px solid var(--border);color:#e5e7eb;border-radius:8px;padding:6px 8px;cursor:pointer}
+    .icon-btn:hover{border-color:#3b82f6}
+    .row-compact{display:flex;gap:6px;flex-wrap:wrap}
   </style>
 </head>
 <body>
   <header>
-    <h1>Agenda do Motorista — v4.1</h1>
-    <div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="https://systemengenharia.com.br/" target="_blank" rel="noopener" aria-label="System Engenharia" class="brand">
+        <!-- COLE O CAMINHO DA LOGO AQUI: ex.: ./assets/system-logo.png -->
+        <img id="brandLogo" src="./assets/system-logo.png" alt="Logo System Engenharia"/>
+      </a>
+      <h1 style="margin:0">Agenda do Motorista — v5.1</h1>
+    </div>
+    <div class="actions">
       <button class="btn secondary" id="btn-export">⬇️ Exportar</button>
       <label class="btn secondary" style="margin-left:8px">⬆️ Importar<input type="file" id="file-import" accept="application/json" hidden></label>
     </div>
@@ -89,11 +108,12 @@
           <label>Status</label>
           <select id="f_status"><option value="pendente">Pendente</option><option value="agendado">Agendado</option><option value="em_rota">Em rota</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select>
         </div>
-        <div style="display:flex;align-items:flex-end">
+        <div style="display:flex;align-items:flex-end;gap:8px" class="row-compact">
           <button class="btn" id="btn-add">➕ Adicionar</button>
+          <button class="icon-btn" id="btn-clear">🧹 Limpar</button>
         </div>
       </div>
-      <p class="muted">Dica: clique nos catálogos à direita para preencher automaticamente. O próximo clique em local preenche **Origem**, o seguinte preenche **Destino**.</p>
+      <p class="muted">Dica: clique nos catálogos à direita para preencher automaticamente. O próximo clique em local preenche <strong>Origem</strong>, o seguinte preenche <strong>Destino</strong>.</p>
     </section>
 
     <!-- Catálogo: pessoas e locais (com rolagem) -->
@@ -106,33 +126,69 @@
       <p class="muted" style="margin-top:10px">Clique para usar. Itens “<em>Outros…</em>” exigem observações.</p>
     </section>
 
+    <!-- Painel de visão geral + filtros -->
+    <section class="panel">
+      <h2>Visão Geral</h2>
+      <div class="kpis" id="kpis">
+        <div class="kpi"><div class="label muted">Total de corridas</div><div class="v" id="kpi-total">0</div></div>
+        <div class="kpi"><div class="label muted">Concluídas</div><div class="v" id="kpi-done">0</div></div>
+        <div class="kpi"><div class="label muted">Pendentes/Agendadas</div><div class="v" id="kpi-pending">0</div></div>
+        <div class="kpi"><div class="label muted">Críticas</div><div class="v" id="kpi-critical">0</div></div>
+      </div>
+      <div class="toolbar" style="margin-top:10px">
+        <input type="date" id="flt-start" title="Início"/>
+        <input type="date" id="flt-end" title="Fim"/>
+        <select id="flt-status">
+          <option value="">Todos status</option>
+          <option>pendente</option><option>agendado</option><option>em_rota</option><option>concluido</option><option>cancelado</option>
+        </select>
+        <input id="flt-text" placeholder="Buscar por texto (nome, local, notas)"/>
+        <div class="spacer"></div>
+        <button class="icon-btn" id="btn-reset">↻ Resetar filtros</button>
+      </div>
+    </section>
+
     <!-- Lista -->
     <section class="panel" style="grid-column:1 / -1">
       <h2>Agenda</h2>
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>Data/Hora</th>
-            <th>Solicitante</th>
-            <th>Origem</th>
-            <th>Destino</th>
-            <th>Urgência</th>
-            <th>Status</th>
+            <th style="min-width:150px">Data/Hora</th>
+            <th style="min-width:140px">Solicitante</th>
+            <th style="min-width:140px">Origem</th>
+            <th style="min-width:140px">Destino</th>
+            <th style="min-width:100px">Urgência</th>
+            <th style="min-width:110px">Status</th>
             <th>Notas</th>
+            <th style="min-width:120px">Ações</th>
           </tr></thead>
           <tbody id="tbl"></tbody>
         </table>
       </div>
     </section>
+
+    <!-- Gráficos -->
+    <section class="panel" style="grid-column:1 / -1">
+      <h2>Gráficos de Uso</h2>
+      <div class="row">
+        <div><label class="muted">Por Solicitante</label><canvas id="chartByRequester" height="200"></canvas></div>
+        <div><label class="muted">Por Local (Origem + Destino)</label><canvas id="chartByLocation" height="200"></canvas></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label class="muted">Status</label><canvas id="chartByStatus" height="200"></canvas></div>
+        <div><label class="muted">Urgência</label><canvas id="chartByUrgency" height="200"></canvas></div>
+      </div>
+    </section>
   </div>
 
   <script>
-    const LS_KEY = 'agendaMotorista_v41';
+    const LS_KEY = 'agendaMotorista_v51';
     const $ = s => document.querySelector(s);
     const $$ = s => Array.from(document.querySelectorAll(s));
     const fmt = v => v ? new Date(v).toLocaleString('pt-BR') : '';
 
-    // Catálogos solicitados
+    // Catálogos sugeridos
     const CATALOG_REQUESTERS = [
       'Sigrid','Marcelo Gosling','Maria','Daniele Abreu','Cristiane','Renato','Suprimentos','Samuel','Departamento administrativo','Outros (por observação)'
     ];
@@ -160,14 +216,13 @@
         const div = document.createElement('div'); div.className='pill';
         div.innerHTML = `<span>${escapeHtml(l)}</span><small>usar</small>`;
         div.addEventListener('click', ()=>{
-          // Primeiro clique preenche origem; segundo, destino
           if(!$('#f_origin').value) $('#f_origin').value = l; else $('#f_destination').value = l;
         });
         boxL.appendChild(div);
       }
     }
 
-    // Carrega estado
+    // Estado e inicialização
     let data = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
     buildCatalogs();
     render();
@@ -194,7 +249,7 @@
       return true;
     }
 
-    // Eventos
+    // Eventos de criação/importação/exportação
     $('#btn-add').addEventListener('click', ()=>{
       const item = {
         id: crypto.randomUUID(),
@@ -210,9 +265,16 @@
       data.unshift(item); save(); render(); clearForm();
     });
 
+    $('#btn-clear').addEventListener('click', clearForm);
+
     $('#file-import').addEventListener('change', (e)=>{
       const f=e.target.files?.[0]; if(!f) return; const r=new FileReader();
-      r.onload=()=>{ try{ const j=JSON.parse(r.result); if(Array.isArray(j)){ data=j; save(); render(); } else if(j && Array.isArray(j.requests)){ data=j.requests; save(); render(); } else { alert('JSON inválido.'); } }catch(err){ alert('Falha ao importar: '+err.message) } };
+      r.onload=()=>{ try{
+          const j=JSON.parse(r.result);
+          if(Array.isArray(j)){ data=j; save(); render(); }
+          else if(j && Array.isArray(j.requests)){ data=j.requests; save(); render(); }
+          else { alert('JSON inválido.'); }
+        }catch(err){ alert('Falha ao importar: '+err.message) } };
       r.readAsText(f);
     });
 
@@ -221,9 +283,35 @@
       const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='agenda-motorista.json'; a.click(); URL.revokeObjectURL(a.href);
     });
 
+    // Filtros
+    $('#btn-reset').addEventListener('click', ()=>{ $('#flt-start').value=''; $('#flt-end').value=''; $('#flt-status').value=''; $('#flt-text').value=''; render(); });
+    ['#flt-start','#flt-end','#flt-status','#flt-text'].forEach(sel=> $(sel).addEventListener('input', render));
+
+    function applyFilters(list){
+      const s = $('#flt-start').value ? new Date($('#flt-start').value) : null;
+      const e = $('#flt-end').value ? new Date($('#flt-end').value) : null;
+      const st = $('#flt-status').value;
+      const t = $('#flt-text').value.toLowerCase().trim();
+      return list.filter(r=>{
+        const d = new Date(r.created_at);
+        if(s && d < s) return false;
+        if(e && d > new Date(e.getTime()+24*60*60*1000-1)) return false; // inclui o dia final
+        if(st && r.status !== st) return false;
+        if(t){
+          const blob = `${r.requester} ${r.origin} ${r.destination} ${r.urgency} ${r.status} ${r.notes}`.toLowerCase();
+          if(!blob.includes(t)) return false;
+        }
+        return true;
+      });
+    }
+
+    // Renderização tabela + KPIs + gráficos
+    let charts = {};
     function render(){
+      const filtered = applyFilters(data);
+      // Tabela
       const tbody = $('#tbl'); tbody.innerHTML='';
-      for(const r of data){
+      for(const r of filtered){
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${fmt(r.created_at)}</td>
@@ -232,9 +320,45 @@
           <td>${escapeHtml(r.destination)}</td>
           <td>${escapeHtml(r.urgency)}</td>
           <td>${escapeHtml(r.status)}</td>
-          <td>${escapeHtml(r.notes||'')}</td>`;
+          <td>${escapeHtml(r.notes||'')}</td>
+          <td>
+            <button class="icon-btn" data-act="edit" data-id="${r.id}">✏️</button>
+            <button class="icon-btn" data-act="del" data-id="${r.id}">🗑️</button>
+          </td>`;
         tbody.appendChild(tr);
       }
+
+      // Ações de linha
+      tbody.querySelectorAll('button[data-act]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('data-id');
+          const act = btn.getAttribute('data-act');
+          if(act==='del'){
+            if(confirm('Remover este registro?')){ data = data.filter(x=>x.id!==id); save(); render(); }
+          } else if(act==='edit'){
+            const rec = data.find(x=>x.id===id);
+            if(rec){
+              $('#f_created_at').value = rec.created_at?.slice(0,16);
+              $('#f_requester').value = rec.requester;
+              $('#f_origin').value = rec.origin;
+              $('#f_destination').value = rec.destination;
+              $('#f_urgency').value = rec.urgency;
+              $('#f_notes').value = rec.notes||'';
+              $('#f_status').value = rec.status;
+              // ao salvar, criamos um novo e removemos o antigo para simplificar
+              data = data.filter(x=>x.id!==id); save(); render();
+            }
+          }
+        });
+      });
+
+      // KPIs
+      $('#kpi-total').textContent = filtered.length;
+      $('#kpi-done').textContent = filtered.filter(x=>x.status==='concluido').length;
+      $('#kpi-pending').textContent = filtered.filter(x=>x.status==='pendente' || x.status==='agendado').length;
+      $('#kpi-critical').textContent = filtered.filter(x=>x.urgency==='critical').length;
+
+      renderCharts(filtered);
     }
 
     function clearForm(){
@@ -242,8 +366,59 @@
       $('#f_urgency').value='baixa'; $('#f_status').value='pendente';
       $('#notes-error').style.display='none';
     }
+
     function save(){ localStorage.setItem(LS_KEY, JSON.stringify(data)); }
+
     function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
+
+    // ===== Gráficos =====
+    function destroyCharts(){
+      for(const k in charts){ try{ charts[k].destroy(); }catch(_){} }
+      charts = {};
+    }
+
+    function countBy(arr, keyFn){
+      const map = new Map();
+      for(const x of arr){ const k = keyFn(x); map.set(k, (map.get(k)||0)+1); }
+      return [...map.entries()].sort((a,b)=>b[1]-a[1]);
+    }
+
+    function renderCharts(list){
+      destroyCharts();
+      // Por solicitante (top 8)
+      const rq = countBy(list, x=>x.requester||'—').slice(0,8);
+      charts.byRequester = new Chart($('#chartByRequester'), {
+        type:'bar',
+        data:{ labels: rq.map(i=>i[0]), datasets:[{ label:'Corridas', data: rq.map(i=>i[1]) }]},
+        options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+      });
+      // Por local (origem+destino)
+      const locCounts = new Map();
+      for(const x of list){
+        const o=(x.origin||'—'); const d=(x.destination||'—');
+        locCounts.set(o,(locCounts.get(o)||0)+1);
+        locCounts.set(d,(locCounts.get(d)||0)+1);
+      }
+      const loc = [...locCounts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8);
+      charts.byLocation = new Chart($('#chartByLocation'), {
+        type:'bar',
+        data:{ labels: loc.map(i=>i[0]), datasets:[{ label:'Ocorrências', data: loc.map(i=>i[1]) }]},
+        options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+      });
+      // Status
+      const statuses = ['pendente','agendado','em_rota','concluido','cancelado'];
+      const sData = statuses.map(s=> list.filter(x=>x.status===s).length);
+      charts.byStatus = new Chart($('#chartByStatus'), {
+        type:'doughnut', data:{ labels: statuses, datasets:[{ data:sData }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } }
+      });
+      // Urgência
+      const urg = ['baixa','media','alta','critical'];
+      const uData = urg.map(u=> list.filter(x=>x.urgency===u).length);
+      charts.byUrgency = new Chart($('#chartByUrgency'), {
+        type:'doughnut', data:{ labels: urg, datasets:[{ data:uData }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } }
+      });
+    }
   </script>
 </body>
 </html>
+
