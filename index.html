@@ -3,97 +3,85 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agenda do Motorista — v4 (auto‑update + origem/destino)</title>
-  <!-- Evita cache agressivo em páginas estáticas -->
+  <title>Agenda do Motorista — v4.1 (scroll + “Outros” obrigatório)</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <style>
-    :root{ --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb; --border:#1f2937; }
+    :root{ --bg:#0f172a; --panel:#111827; --border:#1f2937; --text:#e5e7eb; --muted:#94a3b8; --accent:#22c55e; --warn:#f59e0b; --err:#ef4444; }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
-    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
-    header h1{margin:0;font-size:16px}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,Segoe UI,Roboto,Inter,Arial}
+    header{padding:14px 18px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+    header h1{margin:0;font-size:18px}
     .wrap{max-width:1200px;margin:0 auto;padding:18px}
     .grid{display:grid;gap:14px}
     @media(min-width:1024px){.grid.cols-3{grid-template-columns:2fr 1.1fr 1.1fr}}
     .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
     .panel h2{margin:0 0 10px;font-size:15px}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .row > *{flex:1 1 190px}
-    input, select, textarea{width:100%;background:#0b1224;border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:10px;outline:none}
+    label{display:block;margin:8px 0 4px 0;font-weight:600}
+    input,select,textarea{width:100%;background:#0b1224;border:1px solid var(--border);border-radius:10px;color:var(--text);padding:9px}
     textarea{min-height:70px;resize:vertical}
-    .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:#0b1224;color:var(--text);padding:10px 12px;border-radius:10px;cursor:pointer}
-    .btn.primary{background:linear-gradient(180deg,#0ea5e9,#0284c7);border-color:#0ea5e9}
-    .btn.ghost{background:transparent}
-    .right{display:flex;gap:8px;align-items:center}
-    .table-wrap{max-height:440px;overflow:auto;border:1px solid var(--border);border-radius:10px}
-    table{width:100%;border-collapse:collapse}
-    th, td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
-    th{background:#0b1224;position:sticky;top:0;z-index:1}
-    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}
-    .u-baixa{background:#0b3b1f;color:#c7f9cc}.u-media{background:#3a3000;color:#fde68a}.u-alta{background:#3a1400;color:#fdba74}.u-critical{background:#3a0000;color:#fecaca}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row>*{flex:1 1 200px}
+    .btn{background:var(--accent);border:none;color:#fff;padding:10px 14px;border-radius:10px;cursor:pointer}
+    .btn.secondary{background:#0b1224;border:1px solid var(--border)}
     .muted{color:var(--muted)}
-    .counter{font-size:28px;font-weight:800}
-    .card{background:#0b1224;border:1px solid var(--border);border-radius:12px;padding:12px}
-    .list{display:grid;gap:6px}
-    .item{display:flex;justify-content:space-between;gap:10px}
-    .sep{height:1px;background:var(--border);margin:12px 0}
-    .scrollbox{max-height:180px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:8px;background:#0b1224}
-    .scrollbox .pill{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;margin:4px 0;border:1px solid #1f2937;border-radius:10px;cursor:pointer}
+    .error{color:var(--err);font-size:12px;margin-top:6px}
+    .table-wrap{max-height:440px;overflow:auto;border:1px solid var(--border);border-radius:10px;margin-top:10px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+    th{background:#0b1224;position:sticky;top:0}
+    /* Catálogos com rolagem */
+    .scrollbox{max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:8px;background:#0b1224}
+    .pill{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#0e162c;border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin:6px 0;cursor:pointer}
     .pill small{opacity:.8}
-    .toast{position:fixed;right:14px;bottom:14px;background:#0b1224;border:1px solid var(--border);padding:10px 12px;border-radius:10px}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:#12233f;color:#c7d2fe;border:1px solid #1f3b73}
   </style>
 </head>
 <body>
   <header>
-    <h1>Agenda do Motorista — v4</h1>
-    <div class="right">
-      <small id="version" class="muted"></small>
-      <button class="btn ghost" id="btn-reload" title="Recarregar">↻ Recarregar</button>
-      <button class="btn" id="btn-export">⬇️ Exportar</button>
-      <label class="btn" title="Importar JSON">⬆️ Importar<input type="file" id="file-import" accept="application/json" hidden></label>
-      <button class="btn" id="btn-reset">🗑️ Limpar</button>
+    <h1>Agenda do Motorista — v4.1</h1>
+    <div>
+      <button class="btn secondary" id="btn-export">⬇️ Exportar</button>
+      <label class="btn secondary" style="margin-left:8px">⬆️ Importar<input type="file" id="file-import" accept="application/json" hidden></label>
     </div>
   </header>
 
   <div class="wrap grid cols-3">
-    <!-- Formulário -->
+    <!-- Formulário principal -->
     <section class="panel" id="form-panel">
-      <h2>Novo pedido / corrida</h2>
+      <h2>Nova Corrida</h2>
       <div class="row">
         <div>
-          <label>Data/Hora Solicitação</label>
+          <label>Data/Hora</label>
           <input type="datetime-local" id="f_created_at" />
         </div>
         <div>
           <label>Solicitante</label>
-          <input id="f_requester" list="catalog-requesters" placeholder="Ex.: Marcelo" />
-          <datalist id="catalog-requesters"></datalist>
+          <input id="f_requester" list="dl-requesters" placeholder="Selecione ou clique no catálogo ao lado" />
+          <datalist id="dl-requesters"></datalist>
         </div>
         <div>
           <label>Urgência</label>
-          <select id="f_urgency"><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option><option value="critical">CRITICAL</option></select>
+          <select id="f_urgency"><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option><option value="critical">CRÍTICA</option></select>
         </div>
       </div>
       <div class="row">
         <div>
           <label><strong>Origem</strong></label>
-          <input id="f_origin" list="catalog-locations" placeholder="Ex.: Escritório System" />
+          <input id="f_origin" list="dl-locations" placeholder="Selecione ou use catálogo" />
         </div>
         <div>
           <label><strong>Destino</strong></label>
-          <input id="f_destination" list="catalog-locations" placeholder="Ex.: Atlântico Golf — Bloco 3" />
+          <input id="f_destination" list="dl-locations" placeholder="Selecione ou use catálogo" />
         </div>
-        <div>
-          <label>Janela/Limite</label>
-          <input type="datetime-local" id="f_deadline" />
-        </div>
+        <datalist id="dl-locations"></datalist>
       </div>
       <div class="row">
         <div>
-          <label>Observações</label>
-          <textarea id="f_notes" placeholder="Materiais especiais, acesso, protocolo…"></textarea>
+          <label>Observações <span class="muted">(obrigatório se escolher “Outros”)</span></label>
+          <textarea id="f_notes" placeholder="Detalhes, endereço específico, contato, protocolo…"></textarea>
+          <div id="notes-error" class="error" style="display:none">Campo obrigatório quando “Outros” é selecionado.</div>
         </div>
       </div>
       <div class="row">
@@ -101,245 +89,161 @@
           <label>Status</label>
           <select id="f_status"><option value="pendente">Pendente</option><option value="agendado">Agendado</option><option value="em_rota">Em rota</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select>
         </div>
-        <div class="right"><button class="btn primary" id="btn-add">➕ Adicionar</button></div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn" id="btn-add">➕ Adicionar</button>
+        </div>
       </div>
-      <p class="muted">Dica: clique em um item dos catálogos para preencher os campos. Origem e Destino são obrigatórios.</p>
+      <p class="muted">Dica: clique nos catálogos à direita para preencher automaticamente. O próximo clique em local preenche **Origem**, o seguinte preenche **Destino**.</p>
     </section>
 
-    <!-- Resumo & Filtros -->
-    <section class="panel" id="summary-panel">
-      <h2>Resumo</h2>
-      <div class="row">
-        <div class="card"><div class="muted">Corridas hoje</div><div id="m_today" class="counter">0</div></div>
-        <div class="card"><div class="muted">Pendentes</div><div id="m_pending" class="counter">0</div></div>
-        <div class="card"><div class="muted">Urgentes</div><div id="m_hot" class="counter">0</div></div>
-      </div>
-      <div class="sep"></div>
-      <div class="row">
-        <div><label>Período — Início</label><input type="date" id="flt_from" /></div>
-        <div><label>Período — Fim</label><input type="date" id="flt_to" /></div>
-      </div>
-      <div class="row">
-        <div><label>Solicitante (contém)</label><input id="flt_requester" /></div>
-        <div><label>Origem (contém)</label><input id="flt_origin" /></div>
-        <div><label>Destino (contém)</label><input id="flt_destination" /></div>
-      </div>
-      <div class="row">
-        <div><label>Urgência</label><select id="flt_urgency"><option value="">Todas</option><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option><option value="critical">CRITICAL</option></select></div>
-        <div><label>Status</label><select id="flt_status"><option value="">Todos</option><option value="pendente">Pendente</option><option value="agendado">Agendado</option><option value="em_rota">Em rota</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select></div>
-      </div>
-    </section>
-
-    <!-- Catálogos -->
-    <section class="panel" id="catalogs">
+    <!-- Catálogo: pessoas e locais (com rolagem) -->
+    <section class="panel">
       <h2>Catálogos (rolagem)</h2>
-      <div class="sep"></div>
-      <div class="row">
-        <div>
-          <div class="muted" style="margin-bottom:6px">Nomes mais comuns que requisitam</div>
-          <div class="scrollbox" id="box-requesters"></div>
-        </div>
-        <div>
-          <div class="muted" style="margin-bottom:6px">Locais mais comuns</div>
-          <div class="scrollbox" id="box-locations"></div>
-        </div>
-      </div>
+      <label>Nomes mais comuns que requisitam</label>
+      <div class="scrollbox" id="box-requesters"></div>
+      <label style="margin-top:12px">Locais mais comuns</label>
+      <div class="scrollbox" id="box-locations"></div>
+      <p class="muted" style="margin-top:10px">Clique para usar. Itens “<em>Outros…</em>” exigem observações.</p>
     </section>
 
-    <!-- Tabela principal -->
+    <!-- Lista -->
     <section class="panel" style="grid-column:1 / -1">
-      <h2>Solicitações / Corridas</h2>
-      <div class="table-wrap"><table>
-        <thead><tr>
-          <th style="min-width:160px">Data/Hora</th>
-          <th style="min-width:160px">Solicitante</th>
-          <th style="min-width:200px">Origem</th>
-          <th style="min-width:220px">Destino</th>
-          <th>Urgência</th>
-          <th>Janela/Limite</th>
-          <th style="min-width:220px">Observações</th>
-          <th>Status</th>
-          <th>Ações</th>
-        </tr></thead>
-        <tbody id="tbl"></tbody>
-      </table></div>
+      <h2>Agenda</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Data/Hora</th>
+            <th>Solicitante</th>
+            <th>Origem</th>
+            <th>Destino</th>
+            <th>Urgência</th>
+            <th>Status</th>
+            <th>Notas</th>
+          </tr></thead>
+          <tbody id="tbl"></tbody>
+        </table>
+      </div>
     </section>
   </div>
 
-  <!-- ======== Configuração de pré-carga ======== -->
-  <script id="preload-data" type="application/json">{ "version": 4, "requests": [] }</script>
   <script>
-  // ========= AUTO-UPDATE ROBUSTO =========
-  const APP_VERSION = 'v4.0.0';               // incremente a cada alteração do código
-  const LS_APP_VER = 'agendaMotorista_appv';  // chave para versionamento no navegador
-  const LS_KEY = 'agendaMotorista_v4';        // chave de dados
-  const PRELOAD_URL = 'agenda-motorista-17-09.json'; // opcional — arquivo no repo
+    const LS_KEY = 'agendaMotorista_v41';
+    const $ = s => document.querySelector(s);
+    const $$ = s => Array.from(document.querySelectorAll(s));
+    const fmt = v => v ? new Date(v).toLocaleString('pt-BR') : '';
 
-  // Mostra versão na UI
-  document.addEventListener('DOMContentLoaded',()=>{ document.getElementById('version').textContent = APP_VERSION; });
+    // Catálogos solicitados
+    const CATALOG_REQUESTERS = [
+      'Sigrid','Marcelo Gosling','Maria','Daniele Abreu','Cristiane','Renato','Suprimentos','Samuel','Departamento administrativo','Outros (por observação)'
+    ];
+    const CATALOG_LOCATIONS = [
+      'Atlântico Golf','Safra','Iconyc','Orygem','Galpão','Banco','Escritório System','Galpão logistico System','Outros (especificar)'
+    ];
 
-  // 1) Service Worker mínimo (network-first) para evitar cache velho
-  if('serviceWorker' in navigator){
-    const swCode = `self.addEventListener('install',e=>{self.skipWaiting()});self.addEventListener('activate',e=>{self.clients.claim()});self.addEventListener('fetch',e=>{e.respondWith(fetch(e.request,{cache:'no-store'}).catch(()=>caches.match(e.request)))})`;
-    const blob = new Blob([swCode],{type:'text/javascript'});
-    const swUrl = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(swUrl).catch(()=>{});
-  }
+    // Render catálogo com rolagem + datalist
+    const dlR = $('#dl-requesters');
+    const dlL = $('#dl-locations');
+    const boxR = $('#box-requesters');
+    const boxL = $('#box-locations');
 
-  // 2) Bump de versão: se o APP_VERSION mudou, limpamos dados antigos e recarregamos 1x
-  (function enforceVersion(){
-    const cur = localStorage.getItem(LS_APP_VER);
-    if(cur !== APP_VERSION){
-      localStorage.setItem(LS_APP_VER, APP_VERSION);
-      // Não apagamos backups; apenas os dados ativos para forçar re-sync
-      localStorage.removeItem(LS_KEY);
-      // dispara uma recarga suave após pequeno atraso para pegar o arquivo novo
-      setTimeout(()=>location.reload(), 150);
-    }
-  })();
-
-  // ======== App ========
-  const $ = (q, el=document)=>el.querySelector(q);
-  const $$ = (q, el=document)=>Array.from(el.querySelectorAll(q));
-  const fmtDateTime = v => v? new Date(v).toLocaleString('pt-BR'): '';
-  const todayStr = () => new Date().toISOString().slice(0,10);
-
-  const CATALOG_REQUESTERS = ['Sigrid','Marcelo Gosling','Maria','Daniele Abreu','Cristiane','Renato','Suprimentos','Samuel','Departamento administrativo','Outros (por observação)'];
-  const CATALOG_LOCATIONS = ['Atlântico Golf','Safra','Iconyc','Orygem','Galpão','Banco','Escritório System','Galpão logistico System','Outros (especificar)'];
-
-  let data = null;
-
-  (async function init(){
-    data = await boot();
-    buildCatalogs();
-    bindEvents();
-    renderAll();
-  })();
-
-  async function boot(){
-    const fromLS = load();
-    if(fromLS && Array.isArray(fromLS.requests)) return fromLS;
-    // Tenta JSON externo (com cache bust)
-    if(PRELOAD_URL){
-      try{ const res = await fetch(`${PRELOAD_URL}?v=${encodeURIComponent(APP_VERSION)}`, {cache:'no-store'}); if(res.ok){ const j = await res.json(); if(j && Array.isArray(j.requests)){ localStorage.setItem(LS_KEY, JSON.stringify(j)); return j; } } }catch{ }
-    }
-    // Tenta JSON embutido
-    try{ const raw = document.getElementById('preload-data')?.textContent||''; if(raw.trim()){ const j = JSON.parse(raw); if(j && Array.isArray(j.requests)){ localStorage.setItem(LS_KEY, JSON.stringify(j)); return j; } } }catch{}
-    // Fallback demo
-    const seeded = seed(); localStorage.setItem(LS_KEY, JSON.stringify(seeded)); return seeded;
-  }
-
-  function bindEvents(){
-    $('#btn-add').addEventListener('click', onAdd);
-    $('#btn-reset').addEventListener('click', ()=>{ if(confirm('Limpar dados locais e recarregar?')){ localStorage.removeItem(LS_KEY); location.reload(); } });
-    $('#btn-export').addEventListener('click', onExport);
-    $('#file-import').addEventListener('change', onImport);
-    $('#btn-reload').addEventListener('click', ()=>location.reload());
-    $$('#summary-panel input, #summary-panel select').forEach(el=> el.addEventListener('input', renderAll));
-  }
-
-  function buildCatalogs(){
-    const boxR = $('#box-requesters'); const boxL = $('#box-locations');
-    const dlR = $('#catalog-requesters'); const dlL = $('#catalog-locations');
-    boxR.innerHTML = boxL.innerHTML = dlR.innerHTML = dlL.innerHTML = '';
-    for(const n of CATALOG_REQUESTERS){
-      const div = document.createElement('div'); div.className='pill'; div.innerHTML = `<span>${escapeHtml(n)}</span><small>usar</small>`; div.addEventListener('click',()=>{ $('#f_requester').value=n; $('#f_requester').focus();}); boxR.appendChild(div);
-      const opt = document.createElement('option'); opt.value=n; dlR.appendChild(opt);
-    }
-    for(const l of CATALOG_LOCATIONS){
-      const div = document.createElement('div'); div.className='pill'; div.innerHTML = `<span>${escapeHtml(l)}</span><small>usar</small>`; div.addEventListener('click',()=>{ if(!$('#f_origin').value) $('#f_origin').value=l; else $('#f_destination').value=l;}); boxL.appendChild(div);
-      const opt = document.createElement('option'); opt.value=l; dlL.appendChild(opt);
-    }
-  }
-
-  function onAdd(){
-    const item = { id: crypto.randomUUID(), created_at: $('#f_created_at').value || new Date().toISOString(), requester_name: ($('#f_requester').value||'').trim(), urgency: $('#f_urgency').value, origin: ($('#f_origin').value||'').trim(), destination: ($('#f_destination').value||'').trim(), deadline_at: $('#f_deadline').value || null, notes: ($('#f_notes').value||'').trim(), status: $('#f_status').value };
-    if(!item.requester_name || !item.origin || !item.destination){ alert('Solicitante, Origem e Destino são obrigatórios.'); return; }
-    data.requests.unshift(item); save(); clearForm(); renderAll(); toast('Corrida adicionada.');
-  }
-
-  function onExport(){ const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='agenda-motorista.json'; a.click(); URL.revokeObjectURL(url); }
-  function onImport(e){ const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const p=JSON.parse(r.result); if(!p||!Array.isArray(p.requests)) throw new Error('JSON inválido'); data=p; save(); renderAll(); toast('Dados importados.'); }catch(err){ alert('Falha ao importar: '+err.message) } }; r.readAsText(f); }
-
-  function renderAll(){ renderTable(); renderMetrics(); }
-
-  function renderTable(){
-    const tbody = $('#tbl'); tbody.innerHTML='';
-    const rows = applyFilters(data.requests);
-    for(const r of rows){
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${fmtDateTime(r.created_at)}</td>
-        <td>${escapeHtml(r.requester_name)}</td>
-        <td>${escapeHtml(r.origin)}</td>
-        <td>${escapeHtml(r.destination)}</td>
-        <td>${badgeUrg(r.urgency)}</td>
-        <td>${r.deadline_at? fmtDateTime(r.deadline_at):'<span class="muted">—</span>'}</td>
-        <td>${escapeHtml(r.notes||'')}</td>
-        <td>
-          <select data-id="${r.id}" class="status-select">
-            ${['pendente','agendado','em_rota','concluido','cancelado'].map(v=>`<option value="${v}" ${v===r.status?'selected':''}>${v}</option>`).join('')}
-          </select>
-        </td>
-        <td>
-          <button class="btn" data-act="edit" data-id="${r.id}">✏️</button>
-          <button class="btn" data-act="del" data-id="${r.id}">🗑️</button>
-        </td>`;
-      tbody.appendChild(tr);
-    }
-    tbody.addEventListener('change', (e)=>{
-      if(e.target.matches('.status-select')){
-        const id = e.target.getAttribute('data-id');
-        const it = data.requests.find(x=>x.id===id);
-        if(it){ it.status = e.target.value; save(); renderMetrics(); }
+    function buildCatalogs(){
+      boxR.innerHTML = boxL.innerHTML = dlR.innerHTML = dlL.innerHTML = '';
+      for(const n of CATALOG_REQUESTERS){
+        const opt = document.createElement('option'); opt.value = n; dlR.appendChild(opt);
+        const div = document.createElement('div'); div.className='pill';
+        div.innerHTML = `<span>${escapeHtml(n)}</span><small>usar</small>`;
+        div.addEventListener('click', ()=>{ $('#f_requester').value = n; });
+        boxR.appendChild(div);
       }
-    }, {once:true});
-    tbody.addEventListener('click', (e)=>{
-      const btn = e.target.closest('button'); if(!btn) return; const id = btn.getAttribute('data-id'); const it = data.requests.find(x=>x.id===id);
-      if(btn.dataset.act==='del'){ if(confirm('Excluir esta solicitação?')){ data.requests = data.requests.filter(x=>x.id!==id); save(); renderAll(); toast('Excluída.'); } }
-      if(btn.dataset.act==='edit' && it){ $('#f_created_at').value = isoLocal(it.created_at); $('#f_requester').value = it.requester_name; $('#f_urgency').value = it.urgency; $('#f_origin').value = it.origin; $('#f_destination').value = it.destination; $('#f_deadline').value = isoLocal(it.deadline_at); $('#f_notes').value = it.notes||''; $('#f_status').value = it.status; data.requests = data.requests.filter(x=>x.id!==id); save(); renderAll(); }
-    }, {once:true});
-  }
+      for(const l of CATALOG_LOCATIONS){
+        const opt = document.createElement('option'); opt.value = l; dlL.appendChild(opt);
+        const div = document.createElement('div'); div.className='pill';
+        div.innerHTML = `<span>${escapeHtml(l)}</span><small>usar</small>`;
+        div.addEventListener('click', ()=>{
+          // Primeiro clique preenche origem; segundo, destino
+          if(!$('#f_origin').value) $('#f_origin').value = l; else $('#f_destination').value = l;
+        });
+        boxL.appendChild(div);
+      }
+    }
 
-  function renderMetrics(){
-    const rows = applyFilters(data.requests);
-    const today = todayStr();
-    const todayCount = rows.filter(r=> (r.status!=='cancelado') && (r.created_at?.slice(0,10)===today)).length;
-    const pending = rows.filter(r=> r.status==='pendente').length;
-    const hot = rows.filter(r=> ['alta','critical'].includes(r.urgency) && r.status!=='cancelado').length;
-    $('#m_today').textContent = todayCount; $('#m_pending').textContent = pending; $('#m_hot').textContent = hot;
-  }
+    // Carrega estado
+    let data = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+    buildCatalogs();
+    render();
 
-  function applyFilters(list){
-    let out=[...list];
-    const fFrom=$('#flt_from').value, fTo=$('#flt_to').value; const fReq=($('#flt_requester').value||'').toLowerCase(); const fOrg=($('#flt_origin').value||'').toLowerCase(); const fDst=($('#flt_destination').value||'').toLowerCase(); const fUrg=$('#flt_urgency').value; const fSta=$('#flt_status').value;
-    if(fFrom) out=out.filter(r=> (r.created_at||'').slice(0,10)>=fFrom);
-    if(fTo) out=out.filter(r=> (r.created_at||'').slice(0,10)<=fTo);
-    if(fReq) out=out.filter(r=> (r.requester_name||'').toLowerCase().includes(fReq));
-    if(fOrg) out=out.filter(r=> (r.origin||'').toLowerCase().includes(fOrg));
-    if(fDst) out=out.filter(r=> (r.destination||'').toLowerCase().includes(fDst));
-    if(fUrg) out=out.filter(r=> r.urgency===fUrg);
-    if(fSta) out=out.filter(r=> r.status===fSta);
-    return out;
-  }
+    // Regras de validação especiais
+    const REQ_OUTROS = 'Outros (por observação)';
+    const LOC_OUTROS = 'Outros (especificar)';
 
-  // ======== Utils ========
-  function badgeUrg(u){ const map={baixa:'u-baixa',media:'u-media',alta:'u-alta',critical:'u-critical'}; return `<span class="badge ${map[u]||'u-baixa'}">${u}</span>`; }
-  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
-  function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'') }catch{ return null } }
-  function save(){ localStorage.setItem(LS_KEY, JSON.stringify(data)) }
-  function clearForm(){ $$('#form-panel input, #form-panel textarea').forEach(el=>{ if(el.type!=='datetime-local') el.value=''; }); $('#f_deadline').value=''; $('#f_created_at').value=''; $('#f_urgency').value='baixa'; $('#f_status').value='pendente'; $('#f_origin').value=''; $('#f_destination').value=''; }
-  function isoLocal(v){ if(!v) return ''; const d=new Date(v); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16) }
-  function toast(msg){ let t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>{t.remove()},1400); }
+    function requiresNotes(){
+      return ($('#f_requester').value.trim() === REQ_OUTROS)
+          || ($('#f_origin').value.trim() === LOC_OUTROS)
+          || ($('#f_destination').value.trim() === LOC_OUTROS);
+    }
 
-  function seed(){
-    const now = new Date(); const iso=(d)=>{ d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString() };
-    return {version:4, requests:[
-      { id: crypto.randomUUID(), created_at: iso(new Date()), requester_name:'Marcelo Gosling', urgency:'alta', origin:'Escritório System', destination:'Atlântico Golf', deadline_at:null, notes:'Levar etiquetas', status:'pendente' },
-      { id: crypto.randomUUID(), created_at: iso(new Date(now.getTime()-3600*1000*5)), requester_name:'Sigrid', urgency:'media', origin:'Galpão', destination:'Escritório System', deadline_at:null, notes:'Buscar painel', status:'agendado' },
-      { id: crypto.randomUUID(), created_at: iso(new Date(now.getTime()-3600*1000*28)), requester_name:'Daniele Abreu', urgency:'critical', origin:'Banco', destination:'Atlântico Golf', deadline_at: iso(new Date(now.getTime()+3600*1000*4)), notes:'Documento urgente', status:'em_rota' }
-    ]};
-  }
+    function validateForm(item){
+      const missingBasics = !item.requester || !item.origin || !item.destination;
+      if(missingBasics){ alert('Preencha Solicitante, Origem e Destino.'); return false; }
+      if(requiresNotes() && !item.notes){
+        $('#notes-error').style.display = 'block';
+        $('#f_notes').focus();
+        return false;
+      }
+      $('#notes-error').style.display = 'none';
+      return true;
+    }
+
+    // Eventos
+    $('#btn-add').addEventListener('click', ()=>{
+      const item = {
+        id: crypto.randomUUID(),
+        created_at: $('#f_created_at').value || new Date().toISOString(),
+        requester: $('#f_requester').value.trim(),
+        origin: $('#f_origin').value.trim(),
+        destination: $('#f_destination').value.trim(),
+        urgency: $('#f_urgency').value,
+        notes: $('#f_notes').value.trim(),
+        status: $('#f_status').value
+      };
+      if(!validateForm(item)) return;
+      data.unshift(item); save(); render(); clearForm();
+    });
+
+    $('#file-import').addEventListener('change', (e)=>{
+      const f=e.target.files?.[0]; if(!f) return; const r=new FileReader();
+      r.onload=()=>{ try{ const j=JSON.parse(r.result); if(Array.isArray(j)){ data=j; save(); render(); } else if(j && Array.isArray(j.requests)){ data=j.requests; save(); render(); } else { alert('JSON inválido.'); } }catch(err){ alert('Falha ao importar: '+err.message) } };
+      r.readAsText(f);
+    });
+
+    $('#btn-export').addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='agenda-motorista.json'; a.click(); URL.revokeObjectURL(a.href);
+    });
+
+    function render(){
+      const tbody = $('#tbl'); tbody.innerHTML='';
+      for(const r of data){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${fmt(r.created_at)}</td>
+          <td>${escapeHtml(r.requester)}</td>
+          <td>${escapeHtml(r.origin)}</td>
+          <td>${escapeHtml(r.destination)}</td>
+          <td>${escapeHtml(r.urgency)}</td>
+          <td>${escapeHtml(r.status)}</td>
+          <td>${escapeHtml(r.notes||'')}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function clearForm(){
+      $$('#form-panel input, #form-panel textarea').forEach(el=>{ if(el.type!=='datetime-local') el.value=''; });
+      $('#f_urgency').value='baixa'; $('#f_status').value='pendente';
+      $('#notes-error').style.display='none';
+    }
+    function save(){ localStorage.setItem(LS_KEY, JSON.stringify(data)); }
+    function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
   </script>
 </body>
 </html>
