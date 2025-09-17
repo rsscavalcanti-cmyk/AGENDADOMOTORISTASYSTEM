@@ -4,11 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Agenda do Motorista — Sync automático (HTML estático)</title>
-  <meta name="description" content="Carrega e salva corridas. Sincroniza automaticamente com um JSON hospedado no repositório (GitHub Pages/raw). Fallback para localStorage." />
+  <meta name="description" content="Carrega e salva corridas. Sincroniza com JSON do repositório. Status com pílulas legíveis e logo com caminho automático (assets/ ou ssets/)." />
   <style>
-    :root{
-      --bg:#0f172a;--panel:#111827;--muted:#334155;--text:#e5e7eb;--accent:#22c55e;--accent2:#60a5fa;--warn:#f59e0b;--danger:#ef4444;--border:#1f2937
-    }
+    :root{ --bg:#0f172a;--panel:#111827;--muted:#334155;--text:#e5e7eb;--accent:#22c55e;--accent2:#60a5fa;--warn:#f59e0b;--danger:#ef4444;--border:#1f2937 }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
     header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(15,23,42,.92));backdrop-filter:saturate(140%) blur(6px);z-index:10}
@@ -35,26 +33,37 @@
     .b-warn{background:#3a3000;color:#fde68a}
     .b-err{background:#3a0000;color:#fecaca}
     .muted{color:#94a3b8}
-    .table-wrap{max-height:400px;overflow:auto;border:1px solid var(--border);border-radius:10px}
+    .table-wrap{max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:10px}
     table{width:100%;border-collapse:collapse}
-    th, td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+    th, td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
     th{font-weight:600;color:#cbd5e1;background:#0b1224;position:sticky;top:0;z-index:1}
+    /* Urgência */
     .u-baixa{background:#0b3b1f;color:#c7f9cc}
     .u-media{background:#3a3000;color:#fde68a}
     .u-alta{background:#3a1400;color:#fdba74}
     .u-critical{background:#3a0000;color:#fecaca}
-    .status[data-s="pendente"]{color:#93c5fd}
-    .status[data-s="agendado"]{color:#a7f3d0}
-    .status[data-s="em_rota"]{color:#fde68a}
-    .status[data-s="concluido"]{color:#86efac;text-decoration:line-through;text-decoration-thickness:1.5px}
-    .status[data-s="cancelado"]{color:#fca5a5;text-decoration:line-through;text-decoration-thickness:1.5px}
+    .badge.u-baixa,.badge.u-media,.badge.u-alta,.badge.u-critical{border:1px solid rgba(255,255,255,.08)}
+    /* STATUS — pílula legível dentro do select */
+    th.status-col{min-width:140px}
+    td.status{white-space:nowrap}
+    .status-select{appearance:none;-webkit-appearance:none;min-width:140px;width:140px;text-align-last:center;padding:8px 28px 8px 12px;border-radius:999px;border:1px solid transparent;font-weight:800;letter-spacing:.2px;text-transform:capitalize;cursor:pointer;transition:.2s ease;}
+    .status-select:focus{outline:2px solid #1e3a8a}
+    /* seta do select */
+    .status-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20' fill='%23e5e7eb'%3E%3Cpath d='M5.5 7.5l4.5 5 4.5-5' stroke='%23e5e7eb' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:12px}
+    /* cores por status (via data-s no TD) */
+    .status[data-s="pendente"] .status-select{background:#0b2343;color:#93c5fd;border-color:#1e3a8a}
+    .status[data-s="agendado"] .status-select{background:#0b3b1f;color:#a7f3d0;border-color:#065f46}
+    .status[data-s="em_rota"] .status-select{background:#3a3000;color:#fde68a;border-color:#92400e}
+    .status[data-s="concluido"] .status-select{background:#052e1b;color:#bbf7d0;border-color:#166534}
+    .status[data-s="cancelado"] .status-select{background:#3a0000;color:#fca5a5;border-color:#7f1d1d;text-decoration:line-through;text-decoration-thickness:1.5px}
     .hide{display:none}
   </style>
 </head>
 <body>
   <header>
     <div class="left">
-      <img src="assets/system-logo.png" alt="System Engenharia" class="logo"/>
+      <!-- LOGO: caminho automático (tenta assets/ e ssets/ em .jpg e .png) -->
+      <img id="logo" alt="System Engenharia" class="logo"/>
       <h1>Agenda do Motorista — Sync</h1>
       <span id="sync-badge" class="badge b-warn">Fonte: carregando…</span>
     </div>
@@ -164,7 +173,7 @@
               <th>Urgência</th>
               <th>Janela/Limite</th>
               <th style="min-width:220px">Observações</th>
-              <th>Status</th>
+              <th class="status-col">Status</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -179,13 +188,9 @@
  * CONFIGURAÇÃO DE SINCRONIA *
  *****************************
  - REMOTE_JSON_URL: defina o caminho do JSON no repositório.
-   Exemplos:
-   1) GitHub Pages:   https://SEU-USUARIO.github.io/SEU-REPO/agenda-motorista.json
-   2) Raw GitHub:     https://raw.githubusercontent.com/SEU-USUARIO/SEU-REPO/main/agenda-motorista.json
  - Você também pode passar ?data=URL no link para usar outro JSON.
 */
-const REMOTE_JSON_URL = (new URLSearchParams(location.search).get('data'))
-  || 'agenda-motorista.json'; // tenta carregar do mesmo diretório por padrão
+const REMOTE_JSON_URL = (new URLSearchParams(location.search).get('data')) || 'agenda-motorista.json';
 
 const LS_KEY = 'agendaMotorista_v2';
 const $ = (q, el=document) => el.querySelector(q);
@@ -193,20 +198,15 @@ const $$ = (q, el=document) => Array.from(el.querySelectorAll(q));
 const fmtDateTime = (v) => v ? new Date(v).toLocaleString('pt-BR') : '';
 const todayStr = () => new Date().toISOString().slice(0,10);
 
-let data = null;
-let source = 'local'; // 'remoto' | 'local'
+let data = null; let source = 'local'; // 'remoto' | 'local'
 
 init();
 
 async function init(){
   attachEvents();
+  setLogoAuto(); // tenta resolver o caminho do logo automaticamente
   await syncFromRemote(); // tenta remoto ao carregar
-  if(!data){
-    // fallback localStorage
-    data = load() || seed();
-    setBadge('Fonte: localStorage', 'b-warn');
-    source = 'local';
-  }
+  if(!data){ data = load() || seed(); setBadge('Fonte: localStorage', 'b-warn'); source='local'; }
   renderAll();
 }
 
@@ -218,6 +218,20 @@ function attachEvents(){
   $('#btn-sync').addEventListener('click', async ()=>{ await syncFromRemote(true); renderAll(); });
   $('#f_requester').addEventListener('change', () => toggleOther('f_requester','f_requester_other'));
   $('#f_location').addEventListener('change', () => toggleOther('f_location','f_location_other'));
+}
+
+// LOGO: tenta assets/ e ssets/, em .jpg e .png, removendo o elemento se não achar
+function setLogoAuto(){
+  const img = $('#logo');
+  const candidates = ['assets/system-logo.jpg','ssets/system-logo.jpg','assets/system-logo.png','ssets/system-logo.png'];
+  let i = 0;
+  function tryNext(){
+    if(i>=candidates.length){ img.remove(); return; }
+    img.onerror = ()=>{ i++; tryNext(); };
+    img.onload = ()=>{};
+    img.src = candidates[i] + '?v=' + Date.now();
+  }
+  tryNext();
 }
 
 function toggleOther(selId, otherId){
@@ -233,85 +247,29 @@ async function syncFromRemote(force=false){
     if(!res.ok) throw new Error('HTTP '+res.status);
     const parsed = await res.json();
     if(!parsed || !Array.isArray(parsed.requests)) throw new Error('Estrutura inválida');
-    data = parsed;
-    save(); // mantém uma cópia local
-    source = 'remoto';
-    setBadge('Fonte: repositório', 'b-ok');
-    $('#source-label').textContent = REMOTE_JSON_URL;
-    return true;
-  }catch(err){
-    if(force) alert('Falha ao sincronizar do repositório: '+err.message);
-    setBadge('Fonte: sem conexão remota', 'b-err');
-    return false;
-  }
+    data = parsed; save(); source='remoto'; setBadge('Fonte: repositório', 'b-ok'); $('#source-label').textContent = REMOTE_JSON_URL; return true;
+  }catch(err){ if(force) alert('Falha ao sincronizar do repositório: '+err.message); setBadge('Fonte: sem conexão remota', 'b-err'); return false; }
 }
 
-function setBadge(text, cls){
-  const el = $('#sync-badge');
-  el.textContent = text; el.className = 'badge '+cls;
-}
+function setBadge(text, cls){ const el = $('#sync-badge'); el.textContent = text; el.className = 'badge '+cls; }
 
 function onAdd(){
   const requesterSel = $('#f_requester').value;
   const requester = requesterSel === '__outro__' ? ($('#f_requester_other').value||'').trim() : requesterSel;
   const locationSel = $('#f_location').value;
   const location = locationSel === '__outro__' ? ($('#f_location_other').value||'').trim() : locationSel;
-  const item = {
-    id: crypto.randomUUID(),
-    created_at: $('#f_created_at').value || new Date().toISOString(),
-    requester_name: requester,
-    urgency: $('#f_urgency').value,
-    location: location,
-    deadline_at: $('#f_deadline').value || null,
-    notes: ($('#f_notes').value||'').trim(),
-    status: $('#f_status').value
-  };
-  if(!item.requester_name || !item.location){
-    alert('Preencha ao menos Solicitante e Local.');
-    return;
-  }
-  data.requests.unshift(item);
-  save();
-  renderAll();
+  const item = { id: crypto.randomUUID(), created_at: $('#f_created_at').value || new Date().toISOString(), requester_name: requester, urgency: $('#f_urgency').value, location: location, deadline_at: $('#f_deadline').value || null, notes: ($('#f_notes').value||'').trim(), status: $('#f_status').value };
+  if(!item.requester_name || !item.location){ alert('Preencha ao menos Solicitante e Local.'); return; }
+  data.requests.unshift(item); save(); renderAll();
 }
 
-function onReset(){
-  if(confirm('Limpar tudo? Isto remove os dados locais (não apaga o JSON do repositório).')){
-    localStorage.removeItem(LS_KEY);
-    data = seed(true);
-    renderAll();
-  }
-}
-
-function onExport(){
-  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'agenda-motorista.json'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-function onImport(e){
-  const file = e.target.files?.[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try{
-      const parsed = JSON.parse(reader.result);
-      if(!parsed || !Array.isArray(parsed.requests)) throw new Error('JSON inválido');
-      data = parsed; save(); renderAll();
-    }catch(err){ alert('Falha ao importar: '+err.message) }
-  };
-  reader.readAsText(file);
-}
-
+function onReset(){ if(confirm('Limpar tudo? Isto remove os dados locais (não apaga o JSON do repositório).')){ localStorage.removeItem(LS_KEY); data = seed(true); renderAll(); } }
+function onExport(){ const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'agenda-motorista.json'; a.click(); URL.revokeObjectURL(url); }
+function onImport(e){ const file = e.target.files?.[0]; if(!file) return; const reader = new FileReader(); reader.onload = () => { try{ const parsed = JSON.parse(reader.result); if(!parsed || !Array.isArray(parsed.requests)) throw new Error('JSON inválido'); data = parsed; save(); renderAll(); }catch(err){ alert('Falha ao importar: '+err.message) } }; reader.readAsText(file); }
 function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'') }catch{ return null } }
 function save(){ localStorage.setItem(LS_KEY, JSON.stringify(data)) }
 
-function renderAll(){
-  renderKPIs();
-  renderTable();
-}
+function renderAll(){ renderKPIs(); renderTable(); }
 
 function renderKPIs(){
   const rows = data.requests || [];
@@ -327,8 +285,7 @@ function renderKPIs(){
 }
 
 function renderTable(){
-  const tbody = $('#tbl');
-  tbody.innerHTML = '';
+  const tbody = $('#tbl'); tbody.innerHTML = '';
   for(const r of (data.requests||[])){
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -348,51 +305,29 @@ function renderTable(){
       </td>`;
     tbody.appendChild(tr);
   }
+  // atualiza cor da pílula ao mudar o select e KPIs
   tbody.addEventListener('change', (e)=>{
     if(e.target.matches('.status-select')){
       const id = e.target.getAttribute('data-id');
       const it = data.requests.find(x=>x.id===id);
       if(it){ it.status = e.target.value; save(); renderKPIs(); }
+      const td = e.target.closest('td.status'); if(td) td.setAttribute('data-s', e.target.value);
     }
   }, {once:true});
   tbody.addEventListener('click', (e)=>{
-    const btn = e.target.closest('button');
-    if(!btn) return;
-    const id = btn.getAttribute('data-id');
+    const btn = e.target.closest('button'); if(!btn) return; const id = btn.getAttribute('data-id');
     if(btn.dataset.act==='del'){
-      if(confirm('Excluir esta solicitação?')){
-        data.requests = data.requests.filter(x=>x.id!==id); save(); renderAll();
-      }
+      if(confirm('Excluir esta solicitação?')){ data.requests = data.requests.filter(x=>x.id!==id); save(); renderAll(); }
     }
   }, {once:true});
 }
 
-function badgeUrg(u){
-  const map = {baixa:'u-baixa', media:'u-media', alta:'u-alta', critical:'u-critical'};
-  return `<span class="badge ${map[u]||'u-baixa'}">${u}</span>`;
-}
-function optStatus(s){
-  const sts=['pendente','agendado','em_rota','concluido','cancelado'];
-  return sts.map(v=> `<option value="${v}" ${v===s?'selected':''}>${v}</option>`).join('');
-}
-function escapeHtml(str){
-  return (str||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
-}
+function badgeUrg(u){ const map = {baixa:'u-baixa', media:'u-media', alta:'u-alta', critical:'u-critical'}; return `<span class="badge ${map[u]||'u-baixa'}">${u}</span>`; }
+function optStatus(s){ const sts=['pendente','agendado','em_rota','concluido','cancelado']; return sts.map(v=> `<option value="${v}" ${v===s?'selected':''}>${v}</option>`).join(''); }
+function escapeHtml(str){ return (str||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
 
 // Seed mínimo (usado apenas no primeiro uso/local)
-function seed(force=false){
-  const now = new Date();
-  const iso = (d)=>{ d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString() };
-  const s = {
-    version: 3,
-    requests: [
-      { id: crypto.randomUUID(), created_at: iso(new Date()), requester_name:'Marcelo Gosling', urgency:'alta', location:'Obra Atlântico', deadline_at:null, notes:'Levar chaves e etiquetas', status:'pendente' }
-    ]
-  };
-  if(!force) localStorage.setItem(LS_KEY, JSON.stringify(s));
-  return s;
-}
+function seed(force=false){ const now = new Date(); const iso = (d)=>{ d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString() }; const s = { version: 3, requests: [ { id: crypto.randomUUID(), created_at: iso(new Date()), requester_name:'Marcelo Gosling', urgency:'alta', location:'Obra Atlântico', deadline_at:null, notes:'Levar chaves e etiquetas', status:'pendente' } ] }; if(!force) localStorage.setItem(LS_KEY, JSON.stringify(s)); return s; }
 </script>
 </body>
 </html>
-
