@@ -3,33 +3,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agenda do Motorista — v3 (pré-carregado)</title>
-  <meta name="description" content="HTML estático com catálogos, exportar/importar JSON e pré-carregamento automático a partir de um arquivo .json do repositório." />
+  <title>Agenda do Motorista — v4 (auto‑update + origem/destino)</title>
+  <!-- Evita cache agressivo em páginas estáticas -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <style>
-    :root{ --bg:#0f172a; --panel:#111827; --muted:#334155; --text:#e5e7eb; --accent:#22c55e; --accent2:#60a5fa; --border:#1f2937; }
+    :root{ --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb; --border:#1f2937; }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
-    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(15,23,42,.92));backdrop-filter:saturate(140%) blur(6px);z-index:10}
-    header h1{font-size:16px;margin:0}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
+    header h1{margin:0;font-size:16px}
     .wrap{max-width:1200px;margin:0 auto;padding:18px}
     .grid{display:grid;gap:14px}
-    @media(min-width:980px){.grid.cols-3{grid-template-columns:2fr 1.3fr 1.3fr}}
+    @media(min-width:1024px){.grid.cols-3{grid-template-columns:2fr 1.1fr 1.1fr}}
     .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
     .panel h2{margin:0 0 10px;font-size:15px}
     .row{display:flex;gap:10px;flex-wrap:wrap}
-    .row > *{flex:1 1 160px}
+    .row > *{flex:1 1 190px}
     input, select, textarea{width:100%;background:#0b1224;border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:10px;outline:none}
     textarea{min-height:70px;resize:vertical}
     .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:#0b1224;color:var(--text);padding:10px 12px;border-radius:10px;cursor:pointer}
     .btn.primary{background:linear-gradient(180deg,#0ea5e9,#0284c7);border-color:#0ea5e9}
+    .btn.ghost{background:transparent}
     .right{display:flex;gap:8px;align-items:center}
-    .table-wrap{max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:10px}
+    .table-wrap{max-height:440px;overflow:auto;border:1px solid var(--border);border-radius:10px}
     table{width:100%;border-collapse:collapse}
     th, td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
     th{background:#0b1224;position:sticky;top:0;z-index:1}
     .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}
     .u-baixa{background:#0b3b1f;color:#c7f9cc}.u-media{background:#3a3000;color:#fde68a}.u-alta{background:#3a1400;color:#fdba74}.u-critical{background:#3a0000;color:#fecaca}
-    .muted{color:#94a3b8}
+    .muted{color:var(--muted)}
     .counter{font-size:28px;font-weight:800}
     .card{background:#0b1224;border:1px solid var(--border);border-radius:12px;padding:12px}
     .list{display:grid;gap:6px}
@@ -37,15 +41,16 @@
     .sep{height:1px;background:var(--border);margin:12px 0}
     .scrollbox{max-height:180px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:8px;background:#0b1224}
     .scrollbox .pill{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;margin:4px 0;border:1px solid #1f2937;border-radius:10px;cursor:pointer}
-    .pill:hover{border-color:#335}
     .pill small{opacity:.8}
-    .footer-note{font-size:12px;color:#94a3b8}
+    .toast{position:fixed;right:14px;bottom:14px;background:#0b1224;border:1px solid var(--border);padding:10px 12px;border-radius:10px}
   </style>
 </head>
 <body>
   <header>
-    <h1>Agenda do Motorista — v3</h1>
+    <h1>Agenda do Motorista — v4</h1>
     <div class="right">
+      <small id="version" class="muted"></small>
+      <button class="btn ghost" id="btn-reload" title="Recarregar">↻ Recarregar</button>
       <button class="btn" id="btn-export">⬇️ Exportar</button>
       <label class="btn" title="Importar JSON">⬆️ Importar<input type="file" id="file-import" accept="application/json" hidden></label>
       <button class="btn" id="btn-reset">🗑️ Limpar</button>
@@ -73,9 +78,12 @@
       </div>
       <div class="row">
         <div>
-          <label>Local</label>
-          <input id="f_location" list="catalog-locations" placeholder="Ex.: Atlântico Golf — Bloco 3" />
-          <datalist id="catalog-locations"></datalist>
+          <label><strong>Origem</strong></label>
+          <input id="f_origin" list="catalog-locations" placeholder="Ex.: Escritório System" />
+        </div>
+        <div>
+          <label><strong>Destino</strong></label>
+          <input id="f_destination" list="catalog-locations" placeholder="Ex.: Atlântico Golf — Bloco 3" />
         </div>
         <div>
           <label>Janela/Limite</label>
@@ -85,7 +93,7 @@
       <div class="row">
         <div>
           <label>Observações</label>
-          <textarea id="f_notes" placeholder="Materiais especiais, horário estrito, acesso…"></textarea>
+          <textarea id="f_notes" placeholder="Materiais especiais, acesso, protocolo…"></textarea>
         </div>
       </div>
       <div class="row">
@@ -95,10 +103,10 @@
         </div>
         <div class="right"><button class="btn primary" id="btn-add">➕ Adicionar</button></div>
       </div>
-      <p class="footer-note">Pré-carregamento: esta página pode buscar um arquivo <strong>.json</strong> do próprio repositório (veja no final do código a constante <code>PRELOAD_URL</code>). Se existir localStorage, ele tem prioridade.</p>
+      <p class="muted">Dica: clique em um item dos catálogos para preencher os campos. Origem e Destino são obrigatórios.</p>
     </section>
 
-    <!-- Resumo -->
+    <!-- Resumo & Filtros -->
     <section class="panel" id="summary-panel">
       <h2>Resumo</h2>
       <div class="row">
@@ -108,36 +116,21 @@
       </div>
       <div class="sep"></div>
       <div class="row">
-        <div>
-          <label>Período — Início</label>
-          <input type="date" id="flt_from" />
-        </div>
-        <div>
-          <label>Período — Fim</label>
-          <input type="date" id="flt_to" />
-        </div>
+        <div><label>Período — Início</label><input type="date" id="flt_from" /></div>
+        <div><label>Período — Fim</label><input type="date" id="flt_to" /></div>
       </div>
       <div class="row">
-        <div>
-          <label>Local (contém)</label>
-          <input id="flt_location" />
-        </div>
-        <div>
-          <label>Solicitante (contém)</label>
-          <input id="flt_requester" />
-        </div>
-        <div>
-          <label>Urgência</label>
-          <select id="flt_urgency"><option value="">Todas</option><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option><option value="critical">CRITICAL</option></select>
-        </div>
-        <div>
-          <label>Status</label>
-          <select id="flt_status"><option value="">Todos</option><option value="pendente">Pendente</option><option value="agendado">Agendado</option><option value="em_rota">Em rota</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select>
-        </div>
+        <div><label>Solicitante (contém)</label><input id="flt_requester" /></div>
+        <div><label>Origem (contém)</label><input id="flt_origin" /></div>
+        <div><label>Destino (contém)</label><input id="flt_destination" /></div>
+      </div>
+      <div class="row">
+        <div><label>Urgência</label><select id="flt_urgency"><option value="">Todas</option><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option><option value="critical">CRITICAL</option></select></div>
+        <div><label>Status</label><select id="flt_status"><option value="">Todos</option><option value="pendente">Pendente</option><option value="agendado">Agendado</option><option value="em_rota">Em rota</option><option value="concluido">Concluído</option><option value="cancelado">Cancelado</option></select></div>
       </div>
     </section>
 
-    <!-- Catálogos com rolagem -->
+    <!-- Catálogos -->
     <section class="panel" id="catalogs">
       <h2>Catálogos (rolagem)</h2>
       <div class="sep"></div>
@@ -151,7 +144,6 @@
           <div class="scrollbox" id="box-locations"></div>
         </div>
       </div>
-      <p class="footer-note">Clique em um item para preencher os campos de <strong>Solicitante</strong> ou <strong>Local</strong> do formulário.</p>
     </section>
 
     <!-- Tabela principal -->
@@ -161,7 +153,8 @@
         <thead><tr>
           <th style="min-width:160px">Data/Hora</th>
           <th style="min-width:160px">Solicitante</th>
-          <th style="min-width:240px">Local</th>
+          <th style="min-width:200px">Origem</th>
+          <th style="min-width:220px">Destino</th>
           <th>Urgência</th>
           <th>Janela/Limite</th>
           <th style="min-width:220px">Observações</th>
@@ -173,25 +166,39 @@
     </section>
   </div>
 
-  <!-- OPCIONAL: cole seu JSON aqui entre as tags (se não quiser usar arquivo externo) -->
-  <script id="preload-data" type="application/json">
-  {
-    "version": 3,
-    "requests": []
-  }
-  </script>
-
+  <!-- ======== Configuração de pré-carga ======== -->
+  <script id="preload-data" type="application/json">{ "version": 4, "requests": [] }</script>
   <script>
-  /* ===================== CONFIG PRÉ-CARREGAMENTO =====================
-     Se você tiver um arquivo JSON no mesmo repositório (ex.: "agenda-motorista-17-09.json"),
-     coloque o nome do arquivo abaixo. O app tentará carregar este JSON
-     somente quando NÃO existir dado no localStorage.
-     Para desativar, deixe como string vazia "".
-  */
-  const PRELOAD_URL = "agenda-motorista-17-09.json"; // <- ajuste para o nome do seu arquivo de backup
+  // ========= AUTO-UPDATE ROBUSTO =========
+  const APP_VERSION = 'v4.0.0';               // incremente a cada alteração do código
+  const LS_APP_VER = 'agendaMotorista_appv';  // chave para versionamento no navegador
+  const LS_KEY = 'agendaMotorista_v4';        // chave de dados
+  const PRELOAD_URL = 'agenda-motorista-17-09.json'; // opcional — arquivo no repo
 
-  /* =========================== APP BÁSICO ============================ */
-  const LS_KEY = 'agendaMotorista_v3';
+  // Mostra versão na UI
+  document.addEventListener('DOMContentLoaded',()=>{ document.getElementById('version').textContent = APP_VERSION; });
+
+  // 1) Service Worker mínimo (network-first) para evitar cache velho
+  if('serviceWorker' in navigator){
+    const swCode = `self.addEventListener('install',e=>{self.skipWaiting()});self.addEventListener('activate',e=>{self.clients.claim()});self.addEventListener('fetch',e=>{e.respondWith(fetch(e.request,{cache:'no-store'}).catch(()=>caches.match(e.request)))})`;
+    const blob = new Blob([swCode],{type:'text/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl).catch(()=>{});
+  }
+
+  // 2) Bump de versão: se o APP_VERSION mudou, limpamos dados antigos e recarregamos 1x
+  (function enforceVersion(){
+    const cur = localStorage.getItem(LS_APP_VER);
+    if(cur !== APP_VERSION){
+      localStorage.setItem(LS_APP_VER, APP_VERSION);
+      // Não apagamos backups; apenas os dados ativos para forçar re-sync
+      localStorage.removeItem(LS_KEY);
+      // dispara uma recarga suave após pequeno atraso para pegar o arquivo novo
+      setTimeout(()=>location.reload(), 150);
+    }
+  })();
+
+  // ======== App ========
   const $ = (q, el=document)=>el.querySelector(q);
   const $$ = (q, el=document)=>Array.from(el.querySelectorAll(q));
   const fmtDateTime = v => v? new Date(v).toLocaleString('pt-BR'): '';
@@ -210,47 +217,24 @@
   })();
 
   async function boot(){
-    // 1) Se existir no localStorage, usa (prioridade)
     const fromLS = load();
     if(fromLS && Array.isArray(fromLS.requests)) return fromLS;
-
-    // 2) Tenta carregar de PRELOAD_URL (arquivo .json no repositório)
+    // Tenta JSON externo (com cache bust)
     if(PRELOAD_URL){
-      try{
-        const res = await fetch(PRELOAD_URL, {cache:'no-store'});
-        if(res.ok){
-          const json = await res.json();
-          if(json && Array.isArray(json.requests)){
-            localStorage.setItem(LS_KEY, JSON.stringify(json));
-            return json;
-          }
-        }
-      }catch(e){/* segue adiante */}
+      try{ const res = await fetch(`${PRELOAD_URL}?v=${encodeURIComponent(APP_VERSION)}`, {cache:'no-store'}); if(res.ok){ const j = await res.json(); if(j && Array.isArray(j.requests)){ localStorage.setItem(LS_KEY, JSON.stringify(j)); return j; } } }catch{ }
     }
-
-    // 3) Tenta carregar do <script type="application/json" id="preload-data">
-    try{
-      const raw = document.getElementById('preload-data')?.textContent || '';
-      if(raw.trim()){
-        const json = JSON.parse(raw);
-        if(json && Array.isArray(json.requests)){
-          localStorage.setItem(LS_KEY, JSON.stringify(json));
-          return json;
-        }
-      }
-    }catch(e){/* ignora */}
-
-    // 4) Fallback para seed demo
-    const seeded = seed(true);
-    localStorage.setItem(LS_KEY, JSON.stringify(seeded));
-    return seeded;
+    // Tenta JSON embutido
+    try{ const raw = document.getElementById('preload-data')?.textContent||''; if(raw.trim()){ const j = JSON.parse(raw); if(j && Array.isArray(j.requests)){ localStorage.setItem(LS_KEY, JSON.stringify(j)); return j; } } }catch{}
+    // Fallback demo
+    const seeded = seed(); localStorage.setItem(LS_KEY, JSON.stringify(seeded)); return seeded;
   }
 
   function bindEvents(){
     $('#btn-add').addEventListener('click', onAdd);
-    $('#btn-reset').addEventListener('click', onReset);
+    $('#btn-reset').addEventListener('click', ()=>{ if(confirm('Limpar dados locais e recarregar?')){ localStorage.removeItem(LS_KEY); location.reload(); } });
     $('#btn-export').addEventListener('click', onExport);
     $('#file-import').addEventListener('change', onImport);
+    $('#btn-reload').addEventListener('click', ()=>location.reload());
     $$('#summary-panel input, #summary-panel select').forEach(el=> el.addEventListener('input', renderAll));
   }
 
@@ -263,19 +247,19 @@
       const opt = document.createElement('option'); opt.value=n; dlR.appendChild(opt);
     }
     for(const l of CATALOG_LOCATIONS){
-      const div = document.createElement('div'); div.className='pill'; div.innerHTML = `<span>${escapeHtml(l)}</span><small>usar</small>`; div.addEventListener('click',()=>{ $('#f_location').value=l; $('#f_location').focus();}); boxL.appendChild(div);
+      const div = document.createElement('div'); div.className='pill'; div.innerHTML = `<span>${escapeHtml(l)}</span><small>usar</small>`; div.addEventListener('click',()=>{ if(!$('#f_origin').value) $('#f_origin').value=l; else $('#f_destination').value=l;}); boxL.appendChild(div);
       const opt = document.createElement('option'); opt.value=l; dlL.appendChild(opt);
     }
   }
 
   function onAdd(){
-    const item = { id: crypto.randomUUID(), created_at: $('#f_created_at').value || new Date().toISOString(), requester_name: ($('#f_requester').value||'').trim(), urgency: $('#f_urgency').value, location: ($('#f_location').value||'').trim(), deadline_at: $('#f_deadline').value || null, notes: ($('#f_notes').value||'').trim(), status: $('#f_status').value };
-    if(!item.requester_name || !item.location){ alert('Preencha ao menos Solicitante e Local.'); return; }
-    data.requests.unshift(item); save(); clearForm(); renderAll();
+    const item = { id: crypto.randomUUID(), created_at: $('#f_created_at').value || new Date().toISOString(), requester_name: ($('#f_requester').value||'').trim(), urgency: $('#f_urgency').value, origin: ($('#f_origin').value||'').trim(), destination: ($('#f_destination').value||'').trim(), deadline_at: $('#f_deadline').value || null, notes: ($('#f_notes').value||'').trim(), status: $('#f_status').value };
+    if(!item.requester_name || !item.origin || !item.destination){ alert('Solicitante, Origem e Destino são obrigatórios.'); return; }
+    data.requests.unshift(item); save(); clearForm(); renderAll(); toast('Corrida adicionada.');
   }
-  function onReset(){ if(confirm('Limpar tudo do navegador?')){ localStorage.removeItem(LS_KEY); location.reload(); } }
+
   function onExport(){ const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='agenda-motorista.json'; a.click(); URL.revokeObjectURL(url); }
-  function onImport(e){ const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const p=JSON.parse(r.result); if(!p||!Array.isArray(p.requests)) throw new Error('JSON inválido'); data=p; save(); renderAll(); }catch(err){ alert('Falha ao importar: '+err.message) } }; r.readAsText(f); }
+  function onImport(e){ const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const p=JSON.parse(r.result); if(!p||!Array.isArray(p.requests)) throw new Error('JSON inválido'); data=p; save(); renderAll(); toast('Dados importados.'); }catch(err){ alert('Falha ao importar: '+err.message) } }; r.readAsText(f); }
 
   function renderAll(){ renderTable(); renderMetrics(); }
 
@@ -287,7 +271,8 @@
       tr.innerHTML = `
         <td>${fmtDateTime(r.created_at)}</td>
         <td>${escapeHtml(r.requester_name)}</td>
-        <td>${escapeHtml(r.location)}</td>
+        <td>${escapeHtml(r.origin)}</td>
+        <td>${escapeHtml(r.destination)}</td>
         <td>${badgeUrg(r.urgency)}</td>
         <td>${r.deadline_at? fmtDateTime(r.deadline_at):'<span class="muted">—</span>'}</td>
         <td>${escapeHtml(r.notes||'')}</td>
@@ -311,8 +296,8 @@
     }, {once:true});
     tbody.addEventListener('click', (e)=>{
       const btn = e.target.closest('button'); if(!btn) return; const id = btn.getAttribute('data-id'); const it = data.requests.find(x=>x.id===id);
-      if(btn.dataset.act==='del'){ if(confirm('Excluir esta solicitação?')){ data.requests = data.requests.filter(x=>x.id!==id); save(); renderAll(); } }
-      if(btn.dataset.act==='edit' && it){ $('#f_created_at').value = isoLocal(it.created_at); $('#f_requester').value = it.requester_name; $('#f_urgency').value = it.urgency; $('#f_location').value = it.location; $('#f_deadline').value = isoLocal(it.deadline_at); $('#f_notes').value = it.notes||''; $('#f_status').value = it.status; data.requests = data.requests.filter(x=>x.id!==id); save(); renderAll(); }
+      if(btn.dataset.act==='del'){ if(confirm('Excluir esta solicitação?')){ data.requests = data.requests.filter(x=>x.id!==id); save(); renderAll(); toast('Excluída.'); } }
+      if(btn.dataset.act==='edit' && it){ $('#f_created_at').value = isoLocal(it.created_at); $('#f_requester').value = it.requester_name; $('#f_urgency').value = it.urgency; $('#f_origin').value = it.origin; $('#f_destination').value = it.destination; $('#f_deadline').value = isoLocal(it.deadline_at); $('#f_notes').value = it.notes||''; $('#f_status').value = it.status; data.requests = data.requests.filter(x=>x.id!==id); save(); renderAll(); }
     }, {once:true});
   }
 
@@ -327,29 +312,32 @@
 
   function applyFilters(list){
     let out=[...list];
-    const fFrom=$('#flt_from').value, fTo=$('#flt_to').value; const fLoc=($('#flt_location').value||'').toLowerCase(); const fReq=($('#flt_requester').value||'').toLowerCase(); const fUrg=$('#flt_urgency').value; const fSta=$('#flt_status').value;
+    const fFrom=$('#flt_from').value, fTo=$('#flt_to').value; const fReq=($('#flt_requester').value||'').toLowerCase(); const fOrg=($('#flt_origin').value||'').toLowerCase(); const fDst=($('#flt_destination').value||'').toLowerCase(); const fUrg=$('#flt_urgency').value; const fSta=$('#flt_status').value;
     if(fFrom) out=out.filter(r=> (r.created_at||'').slice(0,10)>=fFrom);
     if(fTo) out=out.filter(r=> (r.created_at||'').slice(0,10)<=fTo);
-    if(fLoc) out=out.filter(r=> (r.location||'').toLowerCase().includes(fLoc));
     if(fReq) out=out.filter(r=> (r.requester_name||'').toLowerCase().includes(fReq));
+    if(fOrg) out=out.filter(r=> (r.origin||'').toLowerCase().includes(fOrg));
+    if(fDst) out=out.filter(r=> (r.destination||'').toLowerCase().includes(fDst));
     if(fUrg) out=out.filter(r=> r.urgency===fUrg);
     if(fSta) out=out.filter(r=> r.status===fSta);
     return out;
   }
 
+  // ======== Utils ========
   function badgeUrg(u){ const map={baixa:'u-baixa',media:'u-media',alta:'u-alta',critical:'u-critical'}; return `<span class="badge ${map[u]||'u-baixa'}">${u}</span>`; }
   function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
   function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'') }catch{ return null } }
   function save(){ localStorage.setItem(LS_KEY, JSON.stringify(data)) }
-  function clearForm(){ $$('#form-panel input, #form-panel textarea').forEach(el=>{ if(el.type!=='datetime-local') el.value=''; }); $('#f_deadline').value=''; $('#f_created_at').value=''; $('#f_urgency').value='baixa'; $('#f_status').value='pendente'; }
+  function clearForm(){ $$('#form-panel input, #form-panel textarea').forEach(el=>{ if(el.type!=='datetime-local') el.value=''; }); $('#f_deadline').value=''; $('#f_created_at').value=''; $('#f_urgency').value='baixa'; $('#f_status').value='pendente'; $('#f_origin').value=''; $('#f_destination').value=''; }
   function isoLocal(v){ if(!v) return ''; const d=new Date(v); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16) }
+  function toast(msg){ let t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>{t.remove()},1400); }
 
   function seed(){
     const now = new Date(); const iso=(d)=>{ d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString() };
-    return {version:3, requests:[
-      { id: crypto.randomUUID(), created_at: iso(new Date()), requester_name:'Marcelo Gosling', urgency:'alta', location:'Atlântico Golf', deadline_at:null, notes:'Levar etiquetas', status:'pendente' },
-      { id: crypto.randomUUID(), created_at: iso(new Date(now.getTime()-3600*1000*5)), requester_name:'Sigrid', urgency:'media', location:'Escritório System', deadline_at:null, notes:'Buscar painel', status:'agendado' },
-      { id: crypto.randomUUID(), created_at: iso(new Date(now.getTime()-3600*1000*28)), requester_name:'Daniele Abreu', urgency:'critical', location:'Banco', deadline_at: iso(new Date(now.getTime()+3600*1000*4)), notes:'Documento urgente', status:'em_rota' }
+    return {version:4, requests:[
+      { id: crypto.randomUUID(), created_at: iso(new Date()), requester_name:'Marcelo Gosling', urgency:'alta', origin:'Escritório System', destination:'Atlântico Golf', deadline_at:null, notes:'Levar etiquetas', status:'pendente' },
+      { id: crypto.randomUUID(), created_at: iso(new Date(now.getTime()-3600*1000*5)), requester_name:'Sigrid', urgency:'media', origin:'Galpão', destination:'Escritório System', deadline_at:null, notes:'Buscar painel', status:'agendado' },
+      { id: crypto.randomUUID(), created_at: iso(new Date(now.getTime()-3600*1000*28)), requester_name:'Daniele Abreu', urgency:'critical', origin:'Banco', destination:'Atlântico Golf', deadline_at: iso(new Date(now.getTime()+3600*1000*4)), notes:'Documento urgente', status:'em_rota' }
     ]};
   }
   </script>
