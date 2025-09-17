@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agenda do Motorista — v5.2 (correções)</title>
+  <title>Agenda do Motorista — v5.3 (correções + logo)</title>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -46,16 +46,20 @@
     .icon-btn{background:transparent;border:1px solid var(--border);color:#e5e7eb;border-radius:8px;padding:6px 8px;cursor:pointer}
     .icon-btn:hover{border-color:#3b82f6}
     .row-compact{display:flex;gap:6px;flex-wrap:wrap}
-    .hint{font-size:12px;color:#94a3b8;margin-top:6px}
+    /* Avisos simples */
+    #flash{position:fixed;right:16px;bottom:16px;background:#0e162c;border:1px solid var(--border);padding:10px 12px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s}
+    #flash.show{opacity:1}
+    #filterInfo{font-size:12px;color:#94a3b8;margin-top:6px}
   </style>
 </head>
 <body>
   <header>
     <div style="display:flex;align-items:center;gap:10px">
       <a href="https://systemengenharia.com.br/" target="_blank" rel="noopener" aria-label="System Engenharia" class="brand">
-        <img id="brandLogo" src="./assets/system-logo.png" alt="Logo System Engenharia"/>
+        <!-- Ajuste o caminho conforme a sua pasta -->
+        <img id="brandLogo" src="assets/system-logo.png?v=1" alt="Logo System Engenharia"/>
       </a>
-      <h1 style="margin:0">Agenda do Motorista — v5.2</h1>
+      <h1 style="margin:0">Agenda do Motorista — v5.3</h1>
     </div>
     <div class="actions">
       <button class="btn secondary" id="btn-export" type="button">⬇️ Exportar</button>
@@ -71,7 +75,6 @@
         <div>
           <label>Data/Hora</label>
           <input type="datetime-local" id="f_created_at" />
-          <div class="hint">Se vazio, usamos a data/hora atual.</div>
         </div>
         <div>
           <label>Solicitante</label>
@@ -109,9 +112,11 @@
         <div style="display:flex;align-items:flex-end;gap:8px" class="row-compact">
           <button class="btn" id="btn-add" type="button">➕ Adicionar</button>
           <button class="icon-btn" id="btn-clear" type="button">🧹 Limpar</button>
+          <button class="icon-btn" id="btn-cancel-edit" type="button" style="display:none">✖️ Cancelar edição</button>
         </div>
       </div>
-      <p class="muted">Clique nos catálogos à direita para preencher automaticamente. O próximo clique em local preenche <strong>Origem</strong>, o seguinte preenche <strong>Destino</strong>.</p>
+      <p class="muted">Dica: clique nos catálogos à direita para preencher automaticamente. O próximo clique em local preenche <strong>Origem</strong>, o seguinte preenche <strong>Destino</strong>.</p>
+      <div id="filterInfo"></div>
     </section>
 
     <!-- Catálogo: pessoas e locais (com rolagem) -->
@@ -180,30 +185,24 @@
     </section>
   </div>
 
+  <div id="flash" role="status" aria-live="polite"></div>
+
   <script>
-    const LS_KEY = 'agendaMotorista_v52';
+    const LS_KEY = 'agendaMotorista_v53';
     const $ = s => document.querySelector(s);
     const $$ = s => Array.from(document.querySelectorAll(s));
     const fmt = v => v ? new Date(v).toLocaleString('pt-BR') : '';
 
     // ===== Helpers =====
-    function uuid(){
-      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-      // Fallback para navegadores antigos
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-        const r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8); return v.toString(16);
-      });
-    }
+    function uuid(){ if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8); return v.toString(16); }); }
     function safeParse(json, def){ try{ return JSON.parse(json); }catch(_){ return def; } }
-    function toast(msg){ console.log(msg); }
+    function toast(msg){ const f=$('#flash'); if(!f) return; f.textContent=msg; f.classList.add('show'); setTimeout(()=>f.classList.remove('show'), 1600); }
+    function norm(s){ return (s||'').trim().toLowerCase(); }
+    function isOutros(v){ return norm(v).startsWith('outros'); }
 
     // Catálogos sugeridos
-    const CATALOG_REQUESTERS = [
-      'Sigrid','Marcelo Gosling','Maria','Daniele Abreu','Cristiane','Renato','Suprimentos','Samuel','Departamento administrativo','Outros (por observação)'
-    ];
-    const CATALOG_LOCATIONS = [
-      'Atlântico Golf','Safra','Iconyc','Orygem','Galpão','Banco','Escritório System','Galpão logistico System','Outros (especificar)'
-    ];
+    const CATALOG_REQUESTERS = [ 'Sigrid','Marcelo Gosling','Maria','Daniele Abreu','Cristiane','Renato','Suprimentos','Samuel','Departamento administrativo','Outros (por observação)' ];
+    const CATALOG_LOCATIONS = [ 'Atlântico Golf','Safra','Iconyc','Orygem','Galpão','Banco','Escritório System','Galpão logistico System','Outros (especificar)' ];
 
     // Render catálogo com rolagem + datalist
     const dlR = $('#dl-requesters');
@@ -224,44 +223,32 @@
         const opt = document.createElement('option'); opt.value = l; dlL.appendChild(opt);
         const div = document.createElement('div'); div.className='pill';
         div.innerHTML = `<span>${escapeHtml(l)}</span><small>usar</small>`;
-        div.addEventListener('click', ()=>{
-          if(!$('#f_origin').value) $('#f_origin').value = l; else $('#f_destination').value = l;
-        });
+        div.addEventListener('click', ()=>{ if(!$('#f_origin').value) $('#f_origin').value = l; else $('#f_destination').value = l; });
         boxL.appendChild(div);
       }
     }
 
     // Estado e inicialização
     let data = safeParse(localStorage.getItem(LS_KEY), []);
+    let editingId = null; // se estiver editando
     buildCatalogs();
     render();
 
     // Regras de validação especiais
-    const REQ_OUTROS = 'Outros (por observação)';
-    const LOC_OUTROS = 'Outros (especificar)';
-
-    function requiresNotes(){
-      return ($('#f_requester').value.trim() === REQ_OUTROS)
-          || ($('#f_origin').value.trim() === LOC_OUTROS)
-          || ($('#f_destination').value.trim() === LOC_OUTROS);
-    }
+    function requiresNotes(){ return isOutros($('#f_requester').value) || isOutros($('#f_origin').value) || isOutros($('#f_destination').value); }
 
     function validateForm(item){
       const missingBasics = !item.requester || !item.origin || !item.destination;
       if(missingBasics){ alert('Preencha Solicitante, Origem e Destino.'); return false; }
-      if(requiresNotes() && !item.notes){
-        $('#notes-error').style.display = 'block';
-        $('#f_notes').focus();
-        return false;
-      }
+      if(requiresNotes() && !item.notes){ $('#notes-error').style.display = 'block'; $('#f_notes').focus(); return false; }
       $('#notes-error').style.display = 'none';
       return true;
     }
 
-    // Eventos de criação/importação/exportação
+    // Eventos de criação/edição/importação/exportação
     $('#btn-add').addEventListener('click', ()=>{
       const item = {
-        id: uuid(),
+        id: editingId || uuid(),
         created_at: $('#f_created_at').value || new Date().toISOString(),
         requester: $('#f_requester').value.trim(),
         origin: $('#f_origin').value.trim(),
@@ -271,17 +258,21 @@
         status: $('#f_status').value
       };
       if(!validateForm(item)) return;
-      data.unshift(item); save(); render(); clearForm(); toast('Corrida adicionada');
+      if(editingId){ data = data.map(x => x.id === editingId ? item : x); toast('Corrida atualizada'); }
+      else { data.unshift(item); toast('Corrida adicionada'); }
+      editingId = null; toggleEditUI(false); save(); render(); clearForm();
     });
 
     $('#btn-clear').addEventListener('click', clearForm);
+    $('#btn-cancel-edit').addEventListener('click', ()=>{ editingId=null; toggleEditUI(false); clearForm(); });
 
     $('#file-import').addEventListener('change', (e)=>{
       const f=e.target.files?.[0]; if(!f) return; const r=new FileReader();
       r.onload=()=>{ const j=safeParse(r.result, null); if(!j){ alert('JSON inválido.'); return; }
-        if(Array.isArray(j)){ data=j; save(); render(); }
-        else if(j && Array.isArray(j.requests)){ data=j.requests; save(); render(); }
-        else { alert('JSON inválido.'); }
+        if(Array.isArray(j)){ data=j; }
+        else if(j && Array.isArray(j.requests)){ data=j.requests; }
+        else { alert('JSON inválido.'); return; }
+        save(); render(); toast('Importado com sucesso');
       };
       r.readAsText(f);
     });
@@ -304,11 +295,8 @@
         const d = new Date(r.created_at);
         if(s && d < s) return false;
         if(e && d > new Date(e.getTime()+24*60*60*1000-1)) return false; // inclui o dia final
-        if(st && r.status !== st) return false;
-        if(t){
-          const blob = `${r.requester} ${r.origin} ${r.destination} ${r.urgency} ${r.status} ${r.notes}`.toLowerCase();
-          if(!blob.includes(t)) return false;
-        }
+        if(st && (r.status||'') !== st) return false;
+        if(t){ const blob = `${r.requester} ${r.origin} ${r.destination} ${r.urgency} ${r.status} ${r.notes}`.toLowerCase(); if(!blob.includes(t)) return false; }
         return true;
       });
     }
@@ -317,6 +305,10 @@
     let charts = {};
     function render(){
       const filtered = applyFilters(data);
+      // Info de filtro
+      const fi = $('#filterInfo');
+      if(fi){ fi.textContent = (filtered.length !== data.length) ? `Mostrando ${filtered.length} de ${data.length} registros (filtros ativos)` : ''; }
+
       // Tabela
       const tbody = $('#tbl'); tbody.innerHTML='';
       for(const r of filtered){
@@ -342,19 +334,18 @@
           const id = btn.getAttribute('data-id');
           const act = btn.getAttribute('data-act');
           if(act==='del'){
-            if(confirm('Remover este registro?')){ data = data.filter(x=>x.id!==id); save(); render(); }
+            if(confirm('Remover este registro?')){ data = data.filter(x=>x.id!==id); save(); render(); toast('Removido'); }
           } else if(act==='edit'){
             const rec = data.find(x=>x.id===id);
             if(rec){
               $('#f_created_at').value = rec.created_at ? new Date(rec.created_at).toISOString().slice(0,16) : '';
-              $('#f_requester').value = rec.requester;
-              $('#f_origin').value = rec.origin;
-              $('#f_destination').value = rec.destination;
-              $('#f_urgency').value = rec.urgency;
+              $('#f_requester').value = rec.requester||'';
+              $('#f_origin').value = rec.origin||'';
+              $('#f_destination').value = rec.destination||'';
+              $('#f_urgency').value = rec.urgency||'baixa';
               $('#f_notes').value = rec.notes||'';
-              $('#f_status').value = rec.status;
-              // remove o antigo; ao adicionar novamente, vira uma nova versão
-              data = data.filter(x=>x.id!==id); save(); render();
+              $('#f_status').value = rec.status||'pendente';
+              editingId = rec.id; toggleEditUI(true); toast('Editando registro');
             }
           }
         });
@@ -369,28 +360,27 @@
       renderCharts(filtered);
     }
 
+    function toggleEditUI(isEditing){
+      const addBtn = $('#btn-add');
+      const cancelBtn = $('#btn-cancel-edit');
+      if(isEditing){ addBtn.textContent = '💾 Salvar'; cancelBtn.style.display='inline-flex'; }
+      else { addBtn.textContent = '➕ Adicionar'; cancelBtn.style.display='none'; }
+    }
+
     function clearForm(){
       $$('#form-panel input, #form-panel textarea').forEach(el=>{ if(el.type!=='datetime-local') el.value=''; });
+      $('#f_created_at').value='';
       $('#f_urgency').value='baixa'; $('#f_status').value='pendente';
       $('#notes-error').style.display='none';
     }
 
-    function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }catch(e){ console.error('Erro ao salvar no localStorage', e); } }
+    function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }catch(e){ console.error('Erro ao salvar no localStorage', e); }}
 
     function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
 
     // ===== Gráficos =====
-    function destroyCharts(){
-      for(const k in charts){ try{ charts[k].destroy(); }catch(_){} }
-      charts = {};
-    }
-
-    function countBy(arr, keyFn){
-      const map = new Map();
-      for(const x of arr){ const k = keyFn(x) || '—'; map.set(k, (map.get(k)||0)+1); }
-      return [...map.entries()].sort((a,b)=>b[1]-a[1]);
-    }
-
+    function destroyCharts(){ for(const k in charts){ try{ charts[k].destroy(); }catch(_){} } charts = {}; }
+    function countBy(arr, keyFn){ const map = new Map(); for(const x of arr){ const k = keyFn(x) || '—'; map.set(k, (map.get(k)||0)+1); } return [...map.entries()].sort((a,b)=>b[1]-a[1]); }
     function renderCharts(list){
       try{
         destroyCharts();
@@ -399,39 +389,33 @@
         const ctxS = document.getElementById('chartByStatus');
         const ctxU = document.getElementById('chartByUrgency');
         if(!(ctxR && ctxL && ctxS && ctxU)) return;
-
-        // Por solicitante (top 8)
         const rq = countBy(list, x=>x.requester).slice(0,8);
-        charts.byRequester = new Chart(ctxR, {
-          type:'bar',
-          data:{ labels: rq.map(i=>i[0]), datasets:[{ label:'Corridas', data: rq.map(i=>i[1]) }]},
-          options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
-        });
-        // Por local (origem+destino)
+        charts.byRequester = new Chart(ctxR, { type:'bar', data:{ labels: rq.map(i=>i[0]), datasets:[{ label:'Corridas', data: rq.map(i=>i[1]) }]}, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } } });
         const locCounts = new Map();
-        for(const x of list){
-          const o=(x.origin||'—'); const d=(x.destination||'—');
-          locCounts.set(o,(locCounts.get(o)||0)+1);
-          locCounts.set(d,(locCounts.get(d)||0)+1);
-        }
+        for(const x of list){ const o=(x.origin||'—'); const d=(x.destination||'—'); locCounts.set(o,(locCounts.get(o)||0)+1); locCounts.set(d,(locCounts.get(d)||0)+1); }
         const loc = [...locCounts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8);
-        charts.byLocation = new Chart(ctxL, {
-          type:'bar',
-          data:{ labels: loc.map(i=>i[0]), datasets:[{ label:'Ocorrências', data: loc.map(i=>i[1]) }]},
-          options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
-        });
-        // Status
+        charts.byLocation = new Chart(ctxL, { type:'bar', data:{ labels: loc.map(i=>i[0]), datasets:[{ label:'Ocorrências', data: loc.map(i=>i[1]) }]}, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } } });
         const statuses = ['pendente','agendado','em_rota','concluido','cancelado'];
         const sData = statuses.map(s=> list.filter(x=>x.status===s).length);
         charts.byStatus = new Chart(ctxS, { type:'doughnut', data:{ labels: statuses, datasets:[{ data:sData }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } } });
-        // Urgência
         const urg = ['baixa','media','alta','critical'];
         const uData = urg.map(u=> list.filter(x=>x.urgency===u).length);
         charts.byUrgency = new Chart(ctxU, { type:'doughnut', data:{ labels: urg, datasets:[{ data:uData }]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } } });
       } catch(err){ console.error('Falha ao desenhar gráficos', err); }
     }
+
+    // ===== Logo fallback e dicas de caminho =====
+    (function(){
+      const img = document.getElementById('brandLogo');
+      if(!img) return;
+      img.addEventListener('error', ()=>{
+        // fallback simples para ajudar a diagnosticar path
+        img.alt = 'Logo não encontrada (verifique o caminho)';
+        img.style.opacity = .6;
+        console.warn('Logo não encontrada no caminho:', img.src);
+      });
+    })();
   </script>
 </body>
 </html>
-
 
