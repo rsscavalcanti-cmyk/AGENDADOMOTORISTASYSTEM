@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agenda do Motorista — Prévia (HTML estático)</title>
+  <meta name="description" content="MVP estático para controle de corridas: solicitações, urgências, frequência por local e solicitantes. Salva no navegador (localStorage)." />
+  <style>
+    :root{
+      --bg:#0f172a;        /* slate-900 */
+      --panel:#111827;     /* gray-900 */
+      --muted:#334155;     /* slate-600 */
+      --text:#e5e7eb;      /* gray-200 */
+      --accent:#22c55e;    /* green-500 */
+      --accent2:#60a5fa;   /* blue-400 */
+      --warn:#f59e0b;      /* amber-500 */
+      --danger:#ef4444;    /* red-500 */
+      --border:#1f2937;    /* gray-800 */
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    a{color:var(--accent2);text-decoration:none}
+    a:hover{text-decoration:underline}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(15,23,42,.92));backdrop-filter:saturate(140%) blur(6px);z-index:10}
+    header h1{font-size:16px;margin:0;font-weight:700}
+    .wrap{max-width:1200px;margin:0 auto;padding:18px}
+    .grid{display:grid;gap:14px}
+    @media(min-width:900px){.grid.cols-3{grid-template-columns:2fr 1.5fr 1.5fr}}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
+    .panel h2{margin:0 0 10px;font-size:15px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row > *{flex:1 1 160px}
+    input, select, textarea{width:100%;background:#0b1224;border:1px solid var(--border);color:var(--text);padding:9px 10px;border-radius:10px;outline:none}
+    input::placeholder,textarea::placeholder{color:#94a3b8}
+    textarea{min-height:70px;resize:vertical}
+    .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:#0b1224;color:var(--text);padding:10px 12px;border-radius:10px;cursor:pointer}
+    .btn:hover{border-color:#2b3a55}
+    .btn.primary{background:linear-gradient(180deg,#0ea5e9,#0284c7);border-color:#0ea5e9}
+    .btn.success{background:linear-gradient(180deg,#22c55e,#16a34a);border-color:#16a34a}
+    .btn.warn{background:linear-gradient(180deg,#f59e0b,#d97706);border-color:#d97706}
+    .btn.ghost{background:transparent}
+    .chips{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{border:1px solid var(--border);padding:6px 10px;border-radius:20px;font-size:12px;opacity:.9}
+    .chip.blue{border-color:#1d4ed8}
+    .chip.green{border-color:#166534}
+    .chip.red{border-color:#991b1b}
+    .chip.amber{border-color:#92400e}
+    table{width:100%;border-collapse:collapse}
+    th, td{padding:10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+    th{font-weight:600;color:#cbd5e1;background:#0b1224;position:sticky;top:0;z-index:1}
+    .table-wrap{max-height:400px;overflow:auto;border:1px solid var(--border);border-radius:10px}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}
+    .u-baixa{background:#0b3b1f;color:#c7f9cc}
+    .u-media{background:#3a3000;color:#fde68a}
+    .u-alta{background:#3a1400;color:#fdba74}
+    .u-critical{background:#3a0000;color:#fecaca}
+    .status{opacity:.9}
+    .status[data-s="pendente"]{color:#93c5fd}
+    .status[data-s="agendado"]{color:#a7f3d0}
+    .status[data-s="em_rota"]{color:#fde68a}
+    .status[data-s="concluido"]{color:#86efac;text-decoration:line-through;text-decoration-thickness:1.5px}
+    .status[data-s="cancelado"]{color:#fca5a5;text-decoration:line-through;text-decoration-thickness:1.5px}
+    .muted{color:#94a3b8}
+    .mt{margin-top:10px}
+    .right{display:flex;gap:8px;align-items:center}
+    .counter{font-size:28px;font-weight:800}
+    .card{background:#0b1224;border:1px solid var(--border);border-radius:12px;padding:12px}
+    .list{display:grid;gap:8px}
+    .list .item{display:flex;justify-content:space-between;gap:10px}
+    .item small{color:#94a3b8}
+    .footer-note{font-size:12px;color:#94a3b8}
+    .sep{height:1px;background:var(--border);margin:12px 0}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Agenda do Motorista — Prévia</h1>
+    <div class="right">
+      <button class="btn ghost" id="btn-export" title="Exportar JSON">⬇️ Exportar</button>
+      <label class="btn ghost" title="Importar JSON">
+        ⬆️ Importar <input type="file" id="file-import" accept="application/json" hidden />
+      </label>
+      <button class="btn" id="btn-reset" title="Limpar tudo">🗑️ Limpar</button>
+    </div>
+  </header>
+
+  <div class="wrap grid cols-3">
+    <!-- Formulário de criação rápida -->
+    <section class="panel" id="form-panel">
+      <h2>Novo pedido / corrida</h2>
+      <div class="row">
+        <div>
+          <label>Data/Hora Solicitação</label>
+          <input type="datetime-local" id="f_created_at" />
+        </div>
+        <div>
+          <label>Solicitante</label>
+          <input id="f_requester" placeholder="Ex.: Marcelo" />
+        </div>
+        <div>
+          <label>Urgência</label>
+          <select id="f_urgency">
+            <option value="baixa">Baixa</option>
+            <option value="media">Média</option>
+            <option value="alta">Alta</option>
+            <option value="critical">CRITICAL</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Local</label>
+          <input id="f_location" placeholder="Ex.: Obra Atlântico — Bloco 3" />
+        </div>
+        <div>
+          <label>Janela/Limite</label>
+          <input type="datetime-local" id="f_deadline" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Observações</label>
+          <textarea id="f_notes" placeholder="Materiais especiais, horário estrito, acesso…"></textarea>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Status</label>
+          <select id="f_status">
+            <option value="pendente">Pendente</option>
+            <option value="agendado">Agendado</option>
+            <option value="em_rota">Em rota</option>
+            <option value="concluido">Concluído</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+        <div class="right">
+          <button class="btn primary" id="btn-add">➕ Adicionar</button>
+        </div>
+      </div>
+      <p class="footer-note mt">Dica: tudo é salvo no seu navegador (localStorage). Para publicar, use o botão **Exportar** e envie o JSON ao GitHub; ou copie este arquivo .html com o bloco `seed` ajustado.</p>
+    </section>
+
+    <!-- Resumos -->
+    <section class="panel" id="summary-panel">
+      <h2>Resumo (hoje/mês)</h2>
+      <div class="row">
+        <div class="card">
+          <div class="muted">Corridas hoje</div>
+          <div id="m_today" class="counter">0</div>
+        </div>
+        <div class="card">
+          <div class="muted">Pendentes</div>
+          <div id="m_pending" class="counter">0</div>
+        </div>
+        <div class="card">
+          <div class="muted">Urgentes (alta+crit)</div>
+          <div id="m_hot" class="counter">0</div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="chips" id="legend">
+        <span class="chip green">baixa</span>
+        <span class="chip amber">média</span>
+        <span class="chip blue">alta</span>
+        <span class="chip red">critical</span>
+      </div>
+      <p class="footer-note mt">Os contadores consideram status ≠ cancelado.</p>
+    </section>
+
+    <!-- Filtros e ranking -->
+    <section class="panel" id="filters-panel">
+      <h2>Filtros & Rankings</h2>
+      <div class="row">
+        <div>
+          <label>Período — Início</label>
+          <input type="date" id="flt_from" />
+        </div>
+        <div>
+          <label>Período — Fim</label>
+          <input type="date" id="flt_to" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Local (contém)</label>
+          <input id="flt_location" />
+        </div>
+        <div>
+          <label>Solicitante (contém)</label>
+          <input id="flt_requester" />
+        </div>
+        <div>
+          <label>Urgência</label>
+          <select id="flt_urgency">
+            <option value="">Todas</option>
+            <option value="baixa">Baixa</option>
+            <option value="media">Média</option>
+            <option value="alta">Alta</option>
+            <option value="critical">CRITICAL</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Status</label>
+          <select id="flt_status">
+            <option value="">Todos</option>
+            <option value="pendente">Pendente</option>
+            <option value="agendado">Agendado</option>
+            <option value="em_rota">Em rota</option>
+            <option value="concluido">Concluído</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+        <div class="right">
+          <button class="btn" id="btn-clear-filter">Limpar filtros</button>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+      <div class="row">
+        <div class="card" style="flex:1 1 260px">
+          <div class="muted">Frequência por local (mês)</div>
+          <div class="list" id="rank_locations"></div>
+        </div>
+        <div class="card" style="flex:1 1 260px">
+          <div class="muted">Solicitantes + urgência</div>
+          <div class="list" id="rank_requesters"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lista principal -->
+    <section class="panel" style="grid-column:1 / -1">
+      <h2>Solicitações / Corridas</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="min-width:160px">Data/Hora</th>
+              <th style="min-width:160px">Solicitante</th>
+              <th style="min-width:240px">Local</th>
+              <th>Urgência</th>
+              <th>Janela/Limite</th>
+              <th style="min-width:220px">Observações</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbl"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+  /* ==========================================
+     MVP estático — Agenda do Motorista
+     - Armazena dados no localStorage (chave: agendaMotorista_v1)
+     - CRUD simples no front-end
+     - Rankings calculados em memória
+     - Export/Import JSON para levar ao GitHub
+     ========================================== */
+
+  const LS_KEY = 'agendaMotorista_v1';
+
+  /** Util **/
+  const $ = (q, el=document) => el.querySelector(q);
+  const $$ = (q, el=document) => Array.from(el.querySelectorAll(q));
+  const fmtDateTime = (v) => v ? new Date(v).toLocaleString('pt-BR') : '';
+  const todayStr = () => new Date().toISOString().slice(0,10);
+
+  /** Estado **/
+  let data = load() || seed();
+  renderAll();
+
+  /** Eventos globais **/
+  $('#btn-add').addEventListener('click', onAdd);
+  $('#btn-reset').addEventListener('click', onReset);
+  $('#btn-export').addEventListener('click', onExport);
+  $('#file-import').addEventListener('change', onImport);
+  $('#btn-clear-filter').addEventListener('click', () => { $$('#filters-panel input').forEach(i=>i.value=''); $('#flt_urgency').value=''; $('#flt_status').value=''; renderAll(); });
+  $$('#filters-panel input, #filters-panel select').forEach(el => el.addEventListener('input', renderAll));
+
+  /** CRUD **/
+  function onAdd(){
+    const item = {
+      id: crypto.randomUUID(),
+      created_at: $('#f_created_at').value || new Date().toISOString(),
+      requester_name: ($('#f_requester').value||'').trim(),
+      urgency: $('#f_urgency').value,
+      location: ($('#f_location').value||'').trim(),
+      deadline_at: $('#f_deadline').value || null,
+      notes: ($('#f_notes').value||'').trim(),
+      status: $('#f_status').value
+    };
+    if(!item.requester_name || !item.location){
+      alert('Preencha ao menos Solicitante e Local.');
+      return;
+    }
+    data.requests.unshift(item);
+    save();
+    clearForm();
+    renderAll();
+  }
+  function onReset(){
+    if(confirm('Limpar tudo? Isto remove os dados salvos no navegador.')){
+      localStorage.removeItem(LS_KEY);
+      data = seed(true);
+      renderAll();
+    }
+  }
+  function onExport(){
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'agenda-motorista.json'; a.click();
+    URL.revokeObjectURL(url);
+  }
+  function onImport(e){
+    const file = e.target.files?.[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const parsed = JSON.parse(reader.result);
+        if(!parsed || !Array.isArray(parsed.requests)) throw new Error('JSON inválido');
+        data = parsed; save(); renderAll();
+      }catch(err){ alert('Falha ao importar: '+err.message) }
+    };
+    reader.readAsText(file);
+  }
+
+  /** Render **/
+  function renderAll(){
+    renderTable();
+    renderMetrics();
+    renderRanks();
+  }
+
+  function renderTable(){
+    const tbody = $('#tbl');
+    tbody.innerHTML = '';
+    const rows = applyFilters(data.requests);
+    for(const r of rows){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${fmtDateTime(r.created_at)}</td>
+        <td>${escapeHtml(r.requester_name)}</td>
+        <td>${escapeHtml(r.location)}</td>
+        <td>${badgeUrg(r.urgency)}</td>
+        <td>${r.deadline_at? fmtDateTime(r.deadline_at):'<span class="muted">—</span>'}</td>
+        <td>${escapeHtml(r.notes||'')}</td>
+        <td class="status" data-s="${r.status}">
+          <select data-id="${r.id}" class="status-select">
+            ${optStatus(r.status)}
+          </select>
+        </td>
+        <td>
+          <button class="btn" data-act="edit" data-id="${r.id}">✏️</button>
+          <button class="btn" data-act="del" data-id="${r.id}">🗑️</button>
+        </td>`;
+      tbody.appendChild(tr);
+    }
+    // Delegação
+    tbody.addEventListener('change', (e)=>{
+      if(e.target.matches('.status-select')){
+        const id = e.target.getAttribute('data-id');
+        const it = data.requests.find(x=>x.id===id);
+        if(it){ it.status = e.target.value; save(); renderMetrics(); }
+      }
+    }, {once:true});
+    tbody.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button');
+      if(!btn) return;
+      const id = btn.getAttribute('data-id');
+      const it = data.requests.find(x=>x.id===id);
+      if(btn.dataset.act==='del'){
+        if(confirm('Excluir esta solicitação?')){
+          data.requests = data.requests.filter(x=>x.id!==id); save(); renderAll();
+        }
+      } else if(btn.dataset.act==='edit'){
+        if(!it) return;
+        // carrega no formulário para edição rápida
+        $('#f_created_at').value = isoLocal(it.created_at);
+        $('#f_requester').value = it.requester_name;
+        $('#f_urgency').value = it.urgency;
+        $('#f_location').value = it.location;
+        $('#f_deadline').value = isoLocal(it.deadline_at);
+        $('#f_notes').value = it.notes||'';
+        $('#f_status').value = it.status;
+        // ao salvar, substitui (apenas para simplificar neste MVP)
+        data.requests = data.requests.filter(x=>x.id!==id);
+        save();
+        renderAll();
+      }
+    }, {once:true});
+  }
+
+  function renderMetrics(){
+    const rows = applyFilters(data.requests);
+    const today = todayStr();
+    const todayCount = rows.filter(r=> (r.status!=='cancelado') && (r.created_at?.slice(0,10)===today)).length;
+    const pending = rows.filter(r=> r.status==='pendente').length;
+    const hot = rows.filter(r=> ['alta','critical'].includes(r.urgency) && r.status!=='cancelado').length;
+    $('#m_today').textContent = todayCount;
+    $('#m_pending').textContent = pending;
+    $('#m_hot').textContent = hot;
+  }
+
+  function renderRanks(){
+    const rows = applyFilters(data.requests).filter(r=> r.status!=='cancelado');
+    // Frequência por local (mês corrente)
+    const ym = new Date().toISOString().slice(0,7);
+    const byLoc = {};
+    for(const r of rows){
+      if(!r.location) continue;
+      const ymRow = (r.created_at||'').slice(0,7);
+      if(ymRow!==ym) continue;
+      byLoc[r.location] = (byLoc[r.location]||0)+1;
+    }
+    const topLoc = Object.entries(byLoc).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const elLoc = $('#rank_locations');
+    elLoc.innerHTML = topLoc.length? '' : '<div class="muted">Sem dados no mês atual.</div>';
+    for(const [loc, cnt] of topLoc){
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML = `<span>${escapeHtml(loc)}</span><small>${cnt}x</small>`;
+      elLoc.appendChild(div);
+    }
+    // Solicitantes + urgência (todas)
+    const byReq = {};
+    for(const r of rows){
+      if(!r.requester_name) continue;
+      const key = r.requester_name.trim();
+      byReq[key] ||= {total:0, baixa:0, media:0, alta:0, critical:0};
+      byReq[key].total++;
+      byReq[key][r.urgency]++;
+    }
+    const listReq = Object.entries(byReq).sort((a,b)=>b[1].total - a[1].total).slice(0,6);
+    const elReq = $('#rank_requesters');
+    elReq.innerHTML = listReq.length? '' : '<div class="muted">Sem dados.</div>';
+    for(const [name, agg] of listReq){
+      const div = document.createElement('div');
+      div.className='item';
+      div.innerHTML = `<span>${escapeHtml(name)}</span><small>${agg.total}x · <span class="badge u-baixa">${agg.baixa}</span> <span class="badge u-media">${agg.media}</span> <span class="badge u-alta">${agg.alta}</span> <span class="badge u-critical">${agg.critical}</span></small>`;
+      elReq.appendChild(div);
+    }
+  }
+
+  /** Filtros **/
+  function applyFilters(list){
+    let out = [...list];
+    const fFrom = $('#flt_from').value;
+    const fTo = $('#flt_to').value;
+    const fLoc = ($('#flt_location').value||'').toLowerCase();
+    const fReq = ($('#flt_requester').value||'').toLowerCase();
+    const fUrg = $('#flt_urgency').value;
+    const fSta = $('#flt_status').value;
+
+    if(fFrom) out = out.filter(r=> (r.created_at||'').slice(0,10) >= fFrom);
+    if(fTo) out = out.filter(r=> (r.created_at||'').slice(0,10) <= fTo);
+    if(fLoc) out = out.filter(r=> (r.location||'').toLowerCase().includes(fLoc));
+    if(fReq) out = out.filter(r=> (r.requester_name||'').toLowerCase().includes(fReq));
+    if(fUrg) out = out.filter(r=> r.urgency===fUrg);
+    if(fSta) out = out.filter(r=> r.status===fSta);
+    return out;
+  }
+
+  /** Helpers **/
+  function badgeUrg(u){
+    const map = {baixa:'u-baixa', media:'u-media', alta:'u-alta', critical:'u-critical'};
+    return `<span class="badge ${map[u]||'u-baixa'}">${u}</span>`;
+  }
+  function optStatus(s){
+    const sts=['pendente','agendado','em_rota','concluido','cancelado'];
+    return sts.map(v=> `<option value="${v}" ${v===s?'selected':''}>${v}</option>`).join('');
+  }
+  function escapeHtml(str){
+    return (str||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
+  }
+  function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||'') }catch{ return null } }
+  function save(){ localStorage.setItem(LS_KEY, JSON.stringify(data)) }
+  function clearForm(){ $$('#form-panel input, #form-panel textarea').forEach(el=>{ if(el.type!=='datetime-local') el.value=''; }); $('#f_deadline').value=''; $('#f_created_at').value=''; $('#f_urgency').value='baixa'; $('#f_status').value='pendente'; }
+  function isoLocal(v){ if(!v) return ''; const d = new Date(v); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16) }
+
+  /** Seed de exemplo (pode editar e subir no GitHub) **/
+  function seed(force=false){
+    const now = new Date();
+    const iso = (d)=>{ d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString() };
+    const s = {
+      version: 1,
+      requests: [
+        { id: crypto.randomUUID(), created_at: iso(new Date()), requester_name:'Marcelo', urgency:'alta', location:'Atlântico Golf — Bloco 3', deadline_at:null, notes:'Levar chaves e etiquetas', status:'pendente' },
+        { id: crypto.randomUUID(), created_at: iso(new Date(now.getTime()-3600*1000*5)), requester_name:'Sigrid', urgency:'media', location:'Base — Almoxarifado', deadline_at:null, notes:'Buscar painel', status:'agendado' },
+        { id: crypto.randomUUID(), created_at: iso(new Date(now.getTime()-3600*1000*28)), requester_name:'Thiago', urgency:'critical', location:'Patrimar — Escritório', deadline_at: iso(new Date(now.getTime()+3600*1000*4)), notes:'Documento urgente', status:'em_rota' },
+        { id: crypto.randomUUID(), created_at: iso(new Date(now.getTime()-3600*1000*30)), requester_name:'Daniele', urgency:'baixa', location:'Fornecedor — Tigre', deadline_at:null, notes:'Coletar NF', status:'concluido' }
+      ]
+    };
+    if(!force) localStorage.setItem(LS_KEY, JSON.stringify(s));
+    return s;
+  }
+  </script>
+</body>
+</html>
