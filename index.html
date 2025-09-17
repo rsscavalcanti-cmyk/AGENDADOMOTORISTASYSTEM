@@ -3,12 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agenda do Motorista — Prévia v2 (rolagem + catálogos)</title>
-  <meta name="description" content="MVP estático com listas padrão e rolagem em catálogos; salva no localStorage; exporta/importa JSON." />
+  <title>Agenda do Motorista — v3 (pré-carregado)</title>
+  <meta name="description" content="HTML estático com catálogos, exportar/importar JSON e pré-carregamento automático a partir de um arquivo .json do repositório." />
   <style>
-    :root{
-      --bg:#0f172a; --panel:#111827; --muted:#334155; --text:#e5e7eb; --accent:#22c55e; --accent2:#60a5fa; --border:#1f2937;
-    }
+    :root{ --bg:#0f172a; --panel:#111827; --muted:#334155; --text:#e5e7eb; --accent:#22c55e; --accent2:#60a5fa; --border:#1f2937; }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
     header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(15,23,42,.92));backdrop-filter:saturate(140%) blur(6px);z-index:10}
@@ -37,7 +35,6 @@
     .list{display:grid;gap:6px}
     .item{display:flex;justify-content:space-between;gap:10px}
     .sep{height:1px;background:var(--border);margin:12px 0}
-    /* NOVO: caixas com rolagem */
     .scrollbox{max-height:180px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:8px;background:#0b1224}
     .scrollbox .pill{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;margin:4px 0;border:1px solid #1f2937;border-radius:10px;cursor:pointer}
     .pill:hover{border-color:#335}
@@ -47,7 +44,7 @@
 </head>
 <body>
   <header>
-    <h1>Agenda do Motorista — Prévia v2</h1>
+    <h1>Agenda do Motorista — v3</h1>
     <div class="right">
       <button class="btn" id="btn-export">⬇️ Exportar</button>
       <label class="btn" title="Importar JSON">⬆️ Importar<input type="file" id="file-import" accept="application/json" hidden></label>
@@ -98,7 +95,7 @@
         </div>
         <div class="right"><button class="btn primary" id="btn-add">➕ Adicionar</button></div>
       </div>
-      <p class="footer-note">Dica: clique em um nome/local na caixa ao lado para preencher o formulário automaticamente.</p>
+      <p class="footer-note">Pré-carregamento: esta página pode buscar um arquivo <strong>.json</strong> do próprio repositório (veja no final do código a constante <code>PRELOAD_URL</code>). Se existir localStorage, ele tem prioridade.</p>
     </section>
 
     <!-- Resumo -->
@@ -140,7 +137,7 @@
       </div>
     </section>
 
-    <!-- NOVO: Catálogos com rolagem -->
+    <!-- Catálogos com rolagem -->
     <section class="panel" id="catalogs">
       <h2>Catálogos (rolagem)</h2>
       <div class="sep"></div>
@@ -154,7 +151,7 @@
           <div class="scrollbox" id="box-locations"></div>
         </div>
       </div>
-      <p class="footer-note">Clique em um item para preencher os campos de **Solicitante** ou **Local** do formulário.</p>
+      <p class="footer-note">Clique em um item para preencher os campos de <strong>Solicitante</strong> ou <strong>Local</strong> do formulário.</p>
     </section>
 
     <!-- Tabela principal -->
@@ -176,78 +173,107 @@
     </section>
   </div>
 
+  <!-- OPCIONAL: cole seu JSON aqui entre as tags (se não quiser usar arquivo externo) -->
+  <script id="preload-data" type="application/json">
+  {
+    "version": 3,
+    "requests": []
+  }
+  </script>
+
   <script>
-  const LS_KEY = 'agendaMotorista_v2';
+  /* ===================== CONFIG PRÉ-CARREGAMENTO =====================
+     Se você tiver um arquivo JSON no mesmo repositório (ex.: "agenda-motorista-17-09.json"),
+     coloque o nome do arquivo abaixo. O app tentará carregar este JSON
+     somente quando NÃO existir dado no localStorage.
+     Para desativar, deixe como string vazia "".
+  */
+  const PRELOAD_URL = "agenda-motorista-17-09.json"; // <- ajuste para o nome do seu arquivo de backup
+
+  /* =========================== APP BÁSICO ============================ */
+  const LS_KEY = 'agendaMotorista_v3';
   const $ = (q, el=document)=>el.querySelector(q);
   const $$ = (q, el=document)=>Array.from(el.querySelectorAll(q));
   const fmtDateTime = v => v? new Date(v).toLocaleString('pt-BR'): '';
   const todayStr = () => new Date().toISOString().slice(0,10);
 
-  // Catálogos solicitados (com rolagem)
-  const CATALOG_REQUESTERS = [
-    'Sigrid','Marcelo Gosling','Maria','Daniele Abreu','Cristiane','Renato','Suprimentos','Samuel','Departamento administrativo','Outros (por observação)'
-  ];
-  const CATALOG_LOCATIONS = [
-    'Atlântico Golf','Safra','Iconyc','Orygem','Galpão','Banco','Escritório System','Galpão logistico System','Outros (especificar)'
-  ];
+  const CATALOG_REQUESTERS = ['Sigrid','Marcelo Gosling','Maria','Daniele Abreu','Cristiane','Renato','Suprimentos','Samuel','Departamento administrativo','Outros (por observação)'];
+  const CATALOG_LOCATIONS = ['Atlântico Golf','Safra','Iconyc','Orygem','Galpão','Banco','Escritório System','Galpão logistico System','Outros (especificar)'];
 
-  // Estado
-  let data = load() || seed();
-  renderAll();
-  buildCatalogs();
+  let data = null;
 
-  // Eventos
-  $('#btn-add').addEventListener('click', onAdd);
-  $('#btn-reset').addEventListener('click', onReset);
-  $('#btn-export').addEventListener('click', onExport);
-  $('#file-import').addEventListener('change', onImport);
-  $$('#summary-panel input, #summary-panel select').forEach(el=> el.addEventListener('input', renderAll));
+  (async function init(){
+    data = await boot();
+    buildCatalogs();
+    bindEvents();
+    renderAll();
+  })();
+
+  async function boot(){
+    // 1) Se existir no localStorage, usa (prioridade)
+    const fromLS = load();
+    if(fromLS && Array.isArray(fromLS.requests)) return fromLS;
+
+    // 2) Tenta carregar de PRELOAD_URL (arquivo .json no repositório)
+    if(PRELOAD_URL){
+      try{
+        const res = await fetch(PRELOAD_URL, {cache:'no-store'});
+        if(res.ok){
+          const json = await res.json();
+          if(json && Array.isArray(json.requests)){
+            localStorage.setItem(LS_KEY, JSON.stringify(json));
+            return json;
+          }
+        }
+      }catch(e){/* segue adiante */}
+    }
+
+    // 3) Tenta carregar do <script type="application/json" id="preload-data">
+    try{
+      const raw = document.getElementById('preload-data')?.textContent || '';
+      if(raw.trim()){
+        const json = JSON.parse(raw);
+        if(json && Array.isArray(json.requests)){
+          localStorage.setItem(LS_KEY, JSON.stringify(json));
+          return json;
+        }
+      }
+    }catch(e){/* ignora */}
+
+    // 4) Fallback para seed demo
+    const seeded = seed(true);
+    localStorage.setItem(LS_KEY, JSON.stringify(seeded));
+    return seeded;
+  }
+
+  function bindEvents(){
+    $('#btn-add').addEventListener('click', onAdd);
+    $('#btn-reset').addEventListener('click', onReset);
+    $('#btn-export').addEventListener('click', onExport);
+    $('#file-import').addEventListener('change', onImport);
+    $$('#summary-panel input, #summary-panel select').forEach(el=> el.addEventListener('input', renderAll));
+  }
 
   function buildCatalogs(){
-    // Render boxes
-    const boxR = $('#box-requesters');
-    const boxL = $('#box-locations');
-    const dlR = $('#catalog-requesters');
-    const dlL = $('#catalog-locations');
-
-    boxR.innerHTML = '';
-    boxL.innerHTML = '';
-    dlR.innerHTML = '';
-    dlL.innerHTML = '';
-
+    const boxR = $('#box-requesters'); const boxL = $('#box-locations');
+    const dlR = $('#catalog-requesters'); const dlL = $('#catalog-locations');
+    boxR.innerHTML = boxL.innerHTML = dlR.innerHTML = dlL.innerHTML = '';
     for(const n of CATALOG_REQUESTERS){
-      const div = document.createElement('div');
-      div.className = 'pill';
-      div.innerHTML = `<span>${escapeHtml(n)}</span><small>usar</small>`;
-      div.addEventListener('click',()=>{ $('#f_requester').value = n; $('#f_requester').focus(); });
-      boxR.appendChild(div);
-      const opt = document.createElement('option'); opt.value = n; dlR.appendChild(opt);
+      const div = document.createElement('div'); div.className='pill'; div.innerHTML = `<span>${escapeHtml(n)}</span><small>usar</small>`; div.addEventListener('click',()=>{ $('#f_requester').value=n; $('#f_requester').focus();}); boxR.appendChild(div);
+      const opt = document.createElement('option'); opt.value=n; dlR.appendChild(opt);
     }
     for(const l of CATALOG_LOCATIONS){
-      const div = document.createElement('div');
-      div.className = 'pill';
-      div.innerHTML = `<span>${escapeHtml(l)}</span><small>usar</small>`;
-      div.addEventListener('click',()=>{ $('#f_location').value = l; $('#f_location').focus(); });
-      boxL.appendChild(div);
-      const opt = document.createElement('option'); opt.value = l; dlL.appendChild(opt);
+      const div = document.createElement('div'); div.className='pill'; div.innerHTML = `<span>${escapeHtml(l)}</span><small>usar</small>`; div.addEventListener('click',()=>{ $('#f_location').value=l; $('#f_location').focus();}); boxL.appendChild(div);
+      const opt = document.createElement('option'); opt.value=l; dlL.appendChild(opt);
     }
   }
 
   function onAdd(){
-    const item = {
-      id: crypto.randomUUID(),
-      created_at: $('#f_created_at').value || new Date().toISOString(),
-      requester_name: ($('#f_requester').value||'').trim(),
-      urgency: $('#f_urgency').value,
-      location: ($('#f_location').value||'').trim(),
-      deadline_at: $('#f_deadline').value || null,
-      notes: ($('#f_notes').value||'').trim(),
-      status: $('#f_status').value
-    };
+    const item = { id: crypto.randomUUID(), created_at: $('#f_created_at').value || new Date().toISOString(), requester_name: ($('#f_requester').value||'').trim(), urgency: $('#f_urgency').value, location: ($('#f_location').value||'').trim(), deadline_at: $('#f_deadline').value || null, notes: ($('#f_notes').value||'').trim(), status: $('#f_status').value };
     if(!item.requester_name || !item.location){ alert('Preencha ao menos Solicitante e Local.'); return; }
     data.requests.unshift(item); save(); clearForm(); renderAll();
   }
-  function onReset(){ if(confirm('Limpar tudo?')){ localStorage.removeItem(LS_KEY); data = seed(true); renderAll(); } }
+  function onReset(){ if(confirm('Limpar tudo do navegador?')){ localStorage.removeItem(LS_KEY); location.reload(); } }
   function onExport(){ const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='agenda-motorista.json'; a.click(); URL.revokeObjectURL(url); }
   function onImport(e){ const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const p=JSON.parse(r.result); if(!p||!Array.isArray(p.requests)) throw new Error('JSON inválido'); data=p; save(); renderAll(); }catch(err){ alert('Falha ao importar: '+err.message) } }; r.readAsText(f); }
 
@@ -286,9 +312,7 @@
     tbody.addEventListener('click', (e)=>{
       const btn = e.target.closest('button'); if(!btn) return; const id = btn.getAttribute('data-id'); const it = data.requests.find(x=>x.id===id);
       if(btn.dataset.act==='del'){ if(confirm('Excluir esta solicitação?')){ data.requests = data.requests.filter(x=>x.id!==id); save(); renderAll(); } }
-      if(btn.dataset.act==='edit' && it){
-        $('#f_created_at').value = isoLocal(it.created_at); $('#f_requester').value = it.requester_name; $('#f_urgency').value = it.urgency; $('#f_location').value = it.location; $('#f_deadline').value = isoLocal(it.deadline_at); $('#f_notes').value = it.notes||''; $('#f_status').value = it.status; data.requests = data.requests.filter(x=>x.id!==id); save(); renderAll();
-      }
+      if(btn.dataset.act==='edit' && it){ $('#f_created_at').value = isoLocal(it.created_at); $('#f_requester').value = it.requester_name; $('#f_urgency').value = it.urgency; $('#f_location').value = it.location; $('#f_deadline').value = isoLocal(it.deadline_at); $('#f_notes').value = it.notes||''; $('#f_status').value = it.status; data.requests = data.requests.filter(x=>x.id!==id); save(); renderAll(); }
     }, {once:true});
   }
 
@@ -320,15 +344,13 @@
   function clearForm(){ $$('#form-panel input, #form-panel textarea').forEach(el=>{ if(el.type!=='datetime-local') el.value=''; }); $('#f_deadline').value=''; $('#f_created_at').value=''; $('#f_urgency').value='baixa'; $('#f_status').value='pendente'; }
   function isoLocal(v){ if(!v) return ''; const d=new Date(v); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16) }
 
-  function seed(force=false){
+  function seed(){
     const now = new Date(); const iso=(d)=>{ d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString() };
-    const s = {version:2, requests:[
+    return {version:3, requests:[
       { id: crypto.randomUUID(), created_at: iso(new Date()), requester_name:'Marcelo Gosling', urgency:'alta', location:'Atlântico Golf', deadline_at:null, notes:'Levar etiquetas', status:'pendente' },
       { id: crypto.randomUUID(), created_at: iso(new Date(now.getTime()-3600*1000*5)), requester_name:'Sigrid', urgency:'media', location:'Escritório System', deadline_at:null, notes:'Buscar painel', status:'agendado' },
       { id: crypto.randomUUID(), created_at: iso(new Date(now.getTime()-3600*1000*28)), requester_name:'Daniele Abreu', urgency:'critical', location:'Banco', deadline_at: iso(new Date(now.getTime()+3600*1000*4)), notes:'Documento urgente', status:'em_rota' }
     ]};
-    if(!force) localStorage.setItem(LS_KEY, JSON.stringify(s));
-    return s;
   }
   </script>
 </body>
